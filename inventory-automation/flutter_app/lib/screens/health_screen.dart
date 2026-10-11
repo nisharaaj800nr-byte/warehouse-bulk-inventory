@@ -168,8 +168,8 @@ class _HealthScreenState extends State<HealthScreen> {
                             ),
                           ),
                           const SizedBox(width: 12),
-                          SizedBox(
-                            width: 200,
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 200),
                             child: Text(
                               c.name,
                               style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: ac.ink),

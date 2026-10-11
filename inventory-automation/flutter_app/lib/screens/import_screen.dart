@@ -247,83 +247,24 @@ class _ImportScreenState extends State<ImportScreen> {
               title: 'Import Data',
               subtitle: 'CSV / Excel / PDF upload karo ya Google Sheet se data lao — phir validate karke import karo.',
             ),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: SectionCard(
-                    title: 'Upload a file',
-                    child: Column(
+            LayoutBuilder(
+              builder: (context, box) => box.maxWidth < 820
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _uploadCard(ac, canOperate),
+                        const SizedBox(height: 16),
+                        _sheetCard(),
+                      ],
+                    )
+                  : Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'CSV, TSV, TXT, XLS, XLSX or PDF — up to 15 MB / 50,000 rows.',
-                          style: TextStyle(fontSize: 12.5, color: ac.muted),
-                        ),
-                        const SizedBox(height: 12),
-                        FilledButton.icon(
-                          onPressed: (canOperate && !_busy) ? _pickFile : null,
-                          icon: const Icon(Icons.upload_file, size: 16),
-                          label: _busy ? const Text('Staging…') : const Text('Choose file & stage'),
-                        ),
+                        Expanded(child: _uploadCard(ac, canOperate)),
+                        const SizedBox(width: 16),
+                        Expanded(child: _sheetCard()),
                       ],
                     ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: SectionCard(
-                    title: 'Connect a Google Sheet',
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        TextField(
-                          controller: _sheetCtl,
-                          decoration: const InputDecoration(
-                            labelText: 'Sheet URL or ID',
-                            hintText: 'https://docs.google.com/spreadsheets/d/…',
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            OutlinedButton(
-                              onPressed: (_busy || _sheetCtl.text.trim().isEmpty) ? null : _loadTabs,
-                              child: const Text('Load tabs'),
-                            ),
-                            if (_tabs.isNotEmpty)
-                              SizedBox(
-                                width: 260,
-                                child: DropdownButtonFormField<String>(
-                                  initialValue: _tab,
-                                  decoration: const InputDecoration(labelText: 'Tab'),
-                                  items: [
-                                    for (final t in _tabs)
-                                      DropdownMenuItem(
-                                        value: '${t['name']}',
-                                        child: Text('${t['name']} (${t['rows']} rows)'),
-                                      ),
-                                  ],
-                                  onChanged: (v) => setState(() => _tab = v),
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        FilledButton(
-                          onPressed: (canOperate && !_busy && _sheetCtl.text.trim().isNotEmpty)
-                              ? _stageSheet
-                              : null,
-                          child: const Text('Stage this sheet'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
             ),
           ],
         ),
@@ -505,6 +446,81 @@ class _ImportScreenState extends State<ImportScreen> {
                 ],
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+  Widget _uploadCard(AppColors ac, bool canOperate) {
+    return SectionCard(
+      title: 'Upload a file',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'CSV, TSV, TXT, XLS, XLSX or PDF - up to 15 MB / 50,000 rows.',
+            style: TextStyle(fontSize: 12.5, color: ac.muted),
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: (canOperate && !_busy) ? _pickFile : null,
+            icon: const Icon(Icons.upload_file, size: 16),
+            label: _busy ? const Text('Staging...') : const Text('Choose file & stage'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sheetCard() {
+    return SectionCard(
+      title: 'Connect a Google Sheet',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: _sheetCtl,
+            decoration: const InputDecoration(
+              labelText: 'Sheet URL or ID',
+              hintText: 'https://docs.google.com/spreadsheets/d/...',
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              OutlinedButton(
+                onPressed: (_busy || _sheetCtl.text.trim().isEmpty) ? null : _loadTabs,
+                child: const Text('Load tabs'),
+              ),
+              if (_tabs.isNotEmpty)
+                SizedBox(
+                  width: 260,
+                  child: DropdownButtonFormField<String>(
+                    initialValue: _tab,
+                    decoration: const InputDecoration(labelText: 'Tab'),
+                    items: [
+                      for (final t in _tabs)
+                        DropdownMenuItem(
+                          value: '${t['name']}',
+                          child: Text('${t['name']} (${t['rows']} rows)'),
+                        ),
+                    ],
+                    onChanged: (v) => setState(() => _tab = v),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          FilledButton(
+            onPressed: (true && !_busy && _sheetCtl.text.trim().isNotEmpty)
+                ? _stageSheet
+                : null,
+            child: const Text('Stage this sheet'),
           ),
         ],
       ),

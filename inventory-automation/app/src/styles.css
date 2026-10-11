@@ -347,3 +347,13 @@ html.dark .backdrop { background: rgba(0, 0, 0, 0.6); }
   .stat-value { font-size: 21px; }
   .topbar { padding: 0 12px; }
 }
+
+/* extra mobile polish (overflow guards) */
+@media (max-width: 600px) {
+  .row,
+  .spread { flex-wrap: wrap; }
+  .card-head { flex-wrap: wrap; }
+  td .cell-clip { max-width: 150px; }
+  .dialog-foot .btn,
+  .drawer-foot .btn { flex: 1 1 auto; }
+}

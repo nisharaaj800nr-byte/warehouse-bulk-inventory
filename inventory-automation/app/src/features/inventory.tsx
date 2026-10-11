@@ -507,7 +507,7 @@ export function InventoryPage() {
             </Button>
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 6 }}>
           {headers.map((h) => (
             <label key={h} className="checkbox">
               <input

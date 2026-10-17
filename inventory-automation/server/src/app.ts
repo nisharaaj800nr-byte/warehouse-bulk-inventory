@@ -8,6 +8,7 @@ import { healthRouter } from './routes/health.js';
 import { importsRouter } from './routes/imports.js';
 import { insightsRouter } from './routes/insights.js';
 import { inventoryRouter } from './routes/inventory.js';
+import { legacyRouter } from './routes/legacy.js';
 import { reportsRouter } from './routes/reports.js';
 import { rulesRouter } from './routes/rules.js';
 import { sourcesRouter } from './routes/sources.js';
@@ -40,6 +41,7 @@ export function createApp({ db, sessionTtlHours }: AppOptions): Express {
   app.use('/api', alertsRouter(db));
   app.use('/api', insightsRouter(db));
   app.use('/api', inventoryRouter(db));
+  app.use('/api', legacyRouter(db, sessionTtlHours));
 
   app.use(notFoundHandler);
   app.use(errorHandler);

@@ -2,14 +2,13 @@ import { Router } from 'express';
 import { z } from 'zod';
 import type { Db } from '../db/index.js';
 import { hashPassword, verifyPassword } from '../auth/password.js';
+import { authenticate } from '../services/authService.js';
 import { authContext, requireAuth } from '../auth/middleware.js';
 import { issueSession, resolveSession, revokeOtherSessions, revokeSession, ROLES, type Role } from '../auth/tokens.js';
 import { writeAudit } from '../lib/audit.js';
 import { fail } from '../lib/errors.js';
 import { parseInput } from '../lib/validate.js';
 
-const MAX_FAILED_ATTEMPTS = 5;
-const LOCK_MS = 15 * 60 * 1000;
 const RATE_LIMIT_MAX = 10;
 const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 
@@ -56,83 +55,20 @@ export function authRouter(db: Db, ttlHours: number): Router {
     }
   }
 
-  function findUserByEmail(email: string): UserRow | undefined {
-    return db.prepare('SELECT * FROM users WHERE email = ?').get(email) as UserRow | undefined;
-  }
-
   router.post('/auth/login', async (req, res, next) => {
     try {
       const body = parseInput(loginSchema, req.body);
       const ip = req.ip ?? 'unknown';
       enforceRateLimit(`${ip}:${body.email.toLowerCase()}`);
 
-      const user = findUserByEmail(body.email);
-      if (!user || Number(user.is_active) !== 1) {
-        writeAudit(db, {
-          actorEmail: body.email,
-          action: 'LOGIN_FAILED',
-          entity: 'user',
-          details: { reason: 'unknown_or_inactive' },
-          ip
-        });
-        throw fail.unauthorized('Invalid email or password');
-      }
-
-      if (user.locked_until && Date.parse(user.locked_until) > Date.now()) {
-        const retryAfter = Math.max(1, Math.ceil((Date.parse(user.locked_until) - Date.now()) / 1000));
-        writeAudit(db, {
-          actorEmail: user.email,
-          action: 'LOGIN_BLOCKED_LOCKED',
-          entity: 'user',
-          entityId: user.id,
-          details: { retryAfterSeconds: retryAfter },
-          ip
-        });
-        throw fail.locked('Account is temporarily locked', { retryAfterSeconds: retryAfter });
-      }
-
-      const passwordOk = await verifyPassword(body.password, user.password_hash);
-      if (!passwordOk) {
-        const attempts = Number(user.failed_attempts) + 1;
-        const lockedUntil = attempts >= MAX_FAILED_ATTEMPTS ? new Date(Date.now() + LOCK_MS).toISOString() : null;
-        db.prepare('UPDATE users SET failed_attempts = ?, locked_until = ?, updated_at = ? WHERE id = ?').run(
-          attempts,
-          lockedUntil,
-          new Date().toISOString(),
-          user.id
-        );
-        writeAudit(db, {
-          actorEmail: user.email,
-          action: lockedUntil ? 'LOGIN_LOCKED' : 'LOGIN_FAILED',
-          entity: 'user',
-          entityId: user.id,
-          details: { attempts, lockedUntil },
-          ip
-        });
-        throw fail.unauthorized('Invalid email or password');
-      }
-
-      const nowIso = new Date().toISOString();
-      db.prepare(
-        'UPDATE users SET failed_attempts = 0, locked_until = NULL, last_login_at = ?, updated_at = ? WHERE id = ?'
-      ).run(nowIso, nowIso, user.id);
-
-      const { token, expiresAt } = issueSession(db, { id: Number(user.id), email: user.email, role: user.role }, ttlHours);
-      writeAudit(db, {
-        actorEmail: user.email,
-        action: 'LOGIN_OK',
-        entity: 'user',
-        entityId: user.id,
-        details: { role: user.role },
-        ip
-      });
+      const { token, expiresAt, user } = await authenticate(db, { email: body.email, password: body.password, ip }, ttlHours);
 
       res.status(200).json({
         ok: true,
         data: {
           token,
           expiresAt,
-          user: { id: Number(user.id), email: user.email, role: user.role }
+          user: { id: user.id, email: user.email, role: user.role }
         }
       });
     } catch (error) {

@@ -1,4 +1,5 @@
 import request from 'supertest';
+import * as XLSX from 'xlsx';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestContext, seedAndLogin, type TestContext } from './helpers.js';
 
@@ -220,5 +221,67 @@ describe('multi source merge', () => {
 
     const cleared = await request(ctx.app).post('/api/conflicts/clear').set('Authorization', `Bearer ${token}`);
     expect(cleared.status).toBe(200);
+  });
+});
+
+describe('file upload (csv + xlsx)', () => {
+  it('imports a CSV file end to end', async () => {
+    const csv = [
+      'Barcode,Model,Brand,Status,Age,Location',
+      'FILE-1,iPhone 13,Apple,L4,45,SW07',
+      'FILE-2,Pixel 8,Google,L4,10,SW02'
+    ].join('\n');
+
+    const response = await request(ctx.app)
+      .post('/api/imports/upload-file')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ sourceId, filename: 'daily.csv', contentBase64: Buffer.from(csv, 'utf8').toString('base64') });
+
+    expect(response.status).toBe(201);
+    expect(response.body.data.rowsParsed).toBe(2);
+    expect(response.body.data.job.rowsOk).toBe(2);
+    expect(response.body.data.headers).toEqual(['Barcode', 'Model', 'Brand', 'Status', 'Age', 'Location']);
+
+    const jobId = response.body.data.job.id as number;
+    const commit = await request(ctx.app)
+      .post(`/api/imports/${jobId}/commit`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(commit.body.data.job.status).toBe('COMPLETE');
+
+    const inventory = await request(ctx.app)
+      .get('/api/inventory?q=FILE-1')
+      .set('Authorization', `Bearer ${token}`);
+    expect(inventory.body.data.items[0].ageBucket).toBe('30-60');
+  });
+
+  it('imports a real XLSX workbook', async () => {
+    const sheet = XLSX.utils.json_to_sheet([
+      { Barcode: 'XLSX-1', Model: 'iPhone 15', Brand: 'Apple', Status: 'L4', Age: 60, Location: 'SW03' },
+      { Barcode: 'XLSX-2', Model: 'Galaxy S22', Brand: 'Samsung', Status: 'L4', Age: 12, Location: 'SW09' }
+    ]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, sheet, 'Stock');
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+
+    const response = await request(ctx.app)
+      .post('/api/imports/upload-file')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ sourceId, filename: 'stock.xlsx', contentBase64: buffer.toString('base64') });
+
+    expect(response.status).toBe(201);
+    expect(response.body.data.sheet).toBe('Stock');
+    expect(response.body.data.rowsParsed).toBe(2);
+    expect(response.body.data.job.rowsOk).toBe(2);
+  });
+
+  it('rejects a corrupt file with a clear validation error', async () => {
+    const garbage = Buffer.from('this is not a workbook', 'utf8').toString('base64');
+    const response = await request(ctx.app)
+      .post('/api/imports/upload-file')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ sourceId, filename: 'broken.xlsx', contentBase64: garbage });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
   });
 });

@@ -6,6 +6,8 @@ import { writeAudit } from '../lib/audit.js';
 import { fail } from '../lib/errors.js';
 import { parseInput } from '../lib/validate.js';
 import { loadMappings, mapRow, mergeSources, upsertInventory } from '../services/importService.js';
+import { parseWorkbookToRows } from '../services/fileImport.js';
+import { stageUpload } from '../services/staging.js';
 import { loadRules, type MappedRow } from '../services/rulesEngine.js';
 
 const idSchema = z.object({ id: z.coerce.number().int().min(1) }).strict();
@@ -86,75 +88,70 @@ export function importsRouter(db: Db): Router {
   const auth = requireAuth(db);
   const operator = requireRole('ADMIN', 'OWNER', 'MANAGER', 'OPERATOR');
 
+const uploadFileSchema = z
+  .object({
+    sourceId: z.number().int().min(1),
+    filename: z.string().trim().min(1).max(200),
+    contentBase64: z.string().min(1).max(40000000)
+  })
+  .strict();
+
   router.post('/imports/upload', auth, operator, (req, res, next) => {
     try {
       const body = parseInput(uploadSchema, req.body);
       const { user } = authContext(req);
 
-      const source = db.prepare('SELECT id, name, source_type, is_active FROM sources WHERE id = ?').get(body.sourceId) as
-        | { id: number; name: string; source_type: string; is_active: number }
-        | undefined;
-      if (!source) throw fail.notFound(`Source ${body.sourceId} not found`);
-      if (Number(source.is_active) !== 1) throw fail.validation([{ path: 'sourceId', message: 'Source is inactive' }]);
+      const result = stageUpload(db, {
+        sourceId: body.sourceId,
+        filename: body.filename ?? null,
+        rows: body.rows as Array<Record<string, unknown>>,
+        createdBy: user.email
+      });
 
-      const mappings = loadMappings(db, body.sourceId);
-      if (mappings.length === 0) {
-        throw fail.validation([{ path: 'sourceId', message: 'Source has no field mapping configured' }]);
-      }
-
-      const now = new Date().toISOString();
-      const jobResult = db
-        .prepare(
-          `INSERT INTO import_jobs (kind, source_id, status, filename, rows_total, rows_ok, rows_failed, created_by, created_at)
-           VALUES ('SINGLE', ?, 'UPLOADED', ?, ?, 0, 0, ?, ?)`
-        )
-        .run(body.sourceId, body.filename ?? null, body.rows.length, user.email, now);
-      const jobId = Number(jobResult.lastInsertRowid);
-
-      const insertRow = db.prepare(
-        'INSERT INTO import_rows (job_id, row_number, barcode, mapped_json, error) VALUES (?, ?, ?, ?, ?)'
-      );
-      const insertError = db.prepare(
-        'INSERT INTO import_errors (job_id, row_number, barcode, field, message) VALUES (?, ?, ?, ?, ?)'
-      );
-
-      let ok = 0;
-      let failed = 0;
-
-      db.exec('BEGIN');
-      try {
-        body.rows.forEach((raw, index) => {
-          const rowNumber = index + 1;
-          const { mapped, errors } = mapRow(raw as Record<string, unknown>, mappings, source.source_type);
-
-          if (!mapped) {
-            failed += 1;
-            insertRow.run(jobId, rowNumber, null, null, errors.map((error) => `${error.field}: ${error.message}`).join('; '));
-            for (const error of errors) insertError.run(jobId, rowNumber, null, error.field, error.message);
-            return;
-          }
-
-          ok += 1;
-          insertRow.run(jobId, rowNumber, mapped.barcode, JSON.stringify(mapped), null);
-        });
-
-        db.prepare('UPDATE import_jobs SET rows_ok = ?, rows_failed = ? WHERE id = ?').run(ok, failed, jobId);
-        db.exec('COMMIT');
-      } catch (error) {
-        db.exec('ROLLBACK');
-        throw error;
-      }
-
-      const job = db.prepare('SELECT * FROM import_jobs WHERE id = ?').get(jobId) as unknown as JobRow;
+      const job = db.prepare('SELECT * FROM import_jobs WHERE id = ?').get(result.jobId) as unknown as JobRow;
       writeAudit(db, {
         actorEmail: user.email,
         action: 'IMPORT_UPLOADED',
         entity: 'import_job',
-        entityId: jobId,
-        details: { source: source.name, rows: body.rows.length, ok, failed },
+        entityId: result.jobId,
+        details: { rows: result.rowsTotal, ok: result.rowsOk, failed: result.rowsFailed },
         ip: req.ip
       });
       res.status(201).json({ ok: true, data: toJob(job) });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/imports/upload-file', auth, operator, (req, res, next) => {
+    try {
+      const body = parseInput(uploadFileSchema, req.body);
+      const { user } = authContext(req);
+
+      const buffer = Buffer.from(body.contentBase64, 'base64');
+      const parsed = parseWorkbookToRows(body.filename, buffer);
+
+      const result = stageUpload(db, {
+        sourceId: body.sourceId,
+        filename: body.filename,
+        rows: parsed.rows,
+        createdBy: user.email
+      });
+
+      const job = db.prepare('SELECT * FROM import_jobs WHERE id = ?').get(result.jobId) as unknown as JobRow;
+      writeAudit(db, {
+        actorEmail: user.email,
+        action: 'IMPORT_FILE_UPLOADED',
+        entity: 'import_job',
+        entityId: result.jobId,
+        details: { filename: body.filename, sheet: parsed.sheetName, headers: parsed.headers, rows: result.rowsTotal },
+        ip: req.ip
+      });
+
+      res.status(201).json({
+        ok: true,
+        data: { job: toJob(job), sheet: parsed.sheetName, headers: parsed.headers, rowsParsed: parsed.rows.length }
+      });
     } catch (error) {
       next(error);
     }

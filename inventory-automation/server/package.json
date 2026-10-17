@@ -12,7 +12,8 @@
     "dev": "npm run build && node dist/index.js",
     "test": "vitest run",
     "migrate": "node dist/db/migrate.js",
-    "create-user": "node dist/tools/create-user.js"
+    "create-user": "node dist/tools/create-user.js",
+    "build:panel": "npm --prefix ../app run build && node scripts/copy-panel.mjs"
   },
   "dependencies": {
     "express": "^4.21.2",

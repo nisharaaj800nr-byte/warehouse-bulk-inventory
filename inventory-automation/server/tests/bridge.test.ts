@@ -100,7 +100,7 @@ describe('panel compatibility bridge', () => {
 
   it('reports unsupported actions explicitly instead of pretending', async () => {
     const token = await seedAndLogin(ctx, { email: 'admin@local.test', password: 'AdminPass123!', role: 'ADMIN' });
-    const response = await gas('reports.generate', { token });
+    const response = await gas('telegram.test', { token });
     expect(response.body.status).toBe('error');
     expect(response.body.code).toBe('UNSUPPORTED');
   });

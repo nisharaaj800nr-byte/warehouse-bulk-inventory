@@ -5,6 +5,7 @@ import { resolveSession, revokeSession, type Role } from '../auth/tokens.js';
 import { ApiError } from '../lib/errors.js';
 import { writeAudit } from '../lib/audit.js';
 import { authenticate } from '../services/authService.js';
+import { dispatchExtended } from './legacyExtended.js';
 import { upsertInventory } from '../services/importService.js';
 import { loadRules } from '../services/rulesEngine.js';
 
@@ -501,7 +502,7 @@ export function legacyRouter(db: Db, sessionTtlHours: number): Router {
       }
 
       default:
-        throw new ApiError(501, 'UNSUPPORTED', `Action ${action} is not available on the local server yet`);
+        return dispatchExtended(db, action, params, role, email, ip);
     }
   }
 

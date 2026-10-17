@@ -1,4 +1,7 @@
 import express, { type Express } from 'express';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { Db } from './db/index.js';
 import { errorHandler, notFoundHandler } from './lib/errors.js';
 import { logger } from './lib/logger.js';
@@ -42,6 +45,20 @@ export function createApp({ db, sessionTtlHours }: AppOptions): Express {
   app.use('/api', insightsRouter(db));
   app.use('/api', inventoryRouter(db));
   app.use('/api', legacyRouter(db, sessionTtlHours));
+
+  // The built React panel is served from the same origin, so the app is a
+  // single process: UI at /, API at /api. No separate web server needed.
+  const publicDir = fileURLToPath(new URL('../public', import.meta.url));
+  if (fs.existsSync(publicDir)) {
+    app.use(express.static(publicDir, { index: false }));
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api')) {
+        next();
+        return;
+      }
+      res.sendFile(path.join(publicDir, 'index.html'));
+    });
+  }
 
   app.use(notFoundHandler);
   app.use(errorHandler);

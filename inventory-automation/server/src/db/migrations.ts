@@ -207,5 +207,27 @@ CREATE INDEX idx_import_errors_job ON import_errors(job_id);
 CREATE INDEX idx_conflicts_barcode ON data_conflicts(barcode);
 CREATE INDEX idx_alerts_active ON alerts(is_active);
 `
+  },
+  {
+    version: 3,
+    name: 'panel_bridge',
+    sql: `
+CREATE TABLE import_files (
+  id TEXT PRIMARY KEY,
+  filename TEXT NOT NULL,
+  headers_json TEXT NOT NULL,
+  rows_json TEXT NOT NULL,
+  created_by TEXT,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX idx_import_files_created ON import_files(created_at);
+`
   }
 ];

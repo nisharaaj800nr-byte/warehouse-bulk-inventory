@@ -41,7 +41,20 @@ export const getToken = (): string => safeGet(TOKEN_KEY);
 export const setToken = (t: string): void => safeSet(TOKEN_KEY, t);
 export const clearToken = (): void => safeRemove(TOKEN_KEY);
 
-export const getApiUrl = (): string => safeGet(URL_KEY) || import.meta.env.VITE_API_URL || '';
+export const getApiUrl = (): string => {
+  const stored = safeGet(URL_KEY);
+  if (stored) return stored;
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl) return envUrl;
+  // Served by the local server (or a packaged desktop/mobile shell) the panel
+  // and the API share one origin, so /api/gas is the correct default.
+  try {
+    if (typeof window !== 'undefined' && /^https?:$/.test(window.location.protocol)) return '/api/gas';
+  } catch {
+    /* ignore */
+  }
+  return '';
+};
 export const setApiUrl = (u: string): void => safeSet(URL_KEY, u.trim());
 
 /* ---------------- mode detection ---------------- */

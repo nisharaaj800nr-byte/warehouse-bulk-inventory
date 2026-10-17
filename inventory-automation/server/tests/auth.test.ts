@@ -21,7 +21,7 @@ describe('health', () => {
     expect(response.status).toBe(200);
     expect(response.body.ok).toBe(true);
     expect(response.body.data.db).toBe('connected');
-    expect(response.body.data.schemaVersion).toBe(1);
+    expect(response.body.data.schemaVersion).toBe(2);
   });
 
   it('returns the error envelope for unknown routes', async () => {

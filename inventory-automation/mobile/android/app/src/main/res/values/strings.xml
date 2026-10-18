@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Bulk Repair</string>
+    <string name="title_activity_main">Bulk Repair</string>
+    <string name="package_name">in.bulkrepair.app</string>
+    <string name="custom_url_scheme">in.bulkrepair.app</string>
+</resources>

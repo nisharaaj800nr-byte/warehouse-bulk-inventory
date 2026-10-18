@@ -20,10 +20,11 @@ import { usersRouter } from './routes/users.js';
 export interface AppOptions {
   db: Db;
   sessionTtlHours: number;
+  dbPath?: string;
 }
 
 /** Builds the Express app. Tests inject their own throw-away database. */
-export function createApp({ db, sessionTtlHours }: AppOptions): Express {
+export function createApp({ db, sessionTtlHours, dbPath = ':memory:' }: AppOptions): Express {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', true);
@@ -58,7 +59,7 @@ export function createApp({ db, sessionTtlHours }: AppOptions): Express {
   app.use('/api', alertsRouter(db));
   app.use('/api', insightsRouter(db));
   app.use('/api', inventoryRouter(db));
-  app.use('/api', legacyRouter(db, sessionTtlHours));
+  app.use('/api', legacyRouter(db, sessionTtlHours, dbPath));
 
   // The built React panel is served from the same origin, so the app is a
   // single process: UI at /, API at /api. No separate web server needed.

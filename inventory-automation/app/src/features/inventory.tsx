@@ -1,7 +1,7 @@
 /* Inventory explorer: search, filters, pagination, detail drawer, CRUD, export. */
 import { useEffect, useMemo, useState } from 'react';
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
-import { Boxes, Download, Pencil, Plus, RefreshCw, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
+import { Boxes, Download, Pencil, Plus, RefreshCw, ScanLine, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
 import { api } from '../lib/api';
 import { errorMessage, queryClient } from '../lib/query';
 import { downloadText, hasRole, useDebounced } from '../lib/utils';
@@ -20,6 +20,7 @@ import {
 import { DataTable, Pagination, type Column } from '../ui/table';
 import { ConfirmDialog, Drawer, DropdownMenu, Modal, useToast } from '../ui/overlay';
 import { useAuth } from './auth';
+import { ScannerModal } from './scanner';
 
 const FILTER_FIELDS = ['STATUS_BUCKET', 'AGE_BUCKET', 'BRAND', 'CATEGORY', 'PRIORITY', 'BIN_BUCKET', 'SOURCE'];
 const HIDDEN_KEY = 'ors.inv.hidden';
@@ -41,7 +42,7 @@ function BucketBadge({ value }: { value: string }) {
 }
 
 function renderCell(header: string, value: string) {
-  if (!value) return <span className="muted">—</span>;
+  if (!value) return <span className="muted">â€”</span>;
   if (header === 'STATUS_BUCKET' || header === 'STATUS' || header === 'AGE_BUCKET') {
     return <BucketBadge value={value} />;
   }
@@ -113,7 +114,7 @@ function ItemDialog({
       {err && <div className="login-err">{err}</div>}
       <div className="form-grid">
         {headers.map((h) => (
-          <Field key={h} label={labelOf(h)} hint={isEdit && h === 'BARCODE' ? 'Key column — not editable.' : undefined}>
+          <Field key={h} label={labelOf(h)} hint={isEdit && h === 'BARCODE' ? 'Key column â€” not editable.' : undefined}>
             <Input
               value={values[h] ?? ''}
               disabled={isEdit && h === 'BARCODE'}
@@ -133,6 +134,7 @@ export function InventoryPage() {
   const canManage = hasRole(session?.role, 'MANAGER');
 
   const [q, setQ] = useState('');
+  const [scanOpen, setScanOpen] = useState(false);
   const debouncedQ = useDebounced(q, 300);
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [page, setPage] = useState(1);
@@ -293,11 +295,19 @@ export function InventoryPage() {
               <Input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Search inventory…"
+                placeholder="Search inventoryâ€¦"
                 style={{ paddingLeft: 32 }}
                 aria-label="Search inventory"
               />
             </div>
+            <Button
+              size="sm"
+              icon={<ScanLine size={14} />}
+              onClick={() => setScanOpen(true)}
+              title="Scan barcode with camera"
+            >
+              Scan
+            </Button>
             {filterSelects}
             {activeFilter && (
               <Button
@@ -367,6 +377,7 @@ export function InventoryPage() {
               </Button>
             )}
           </Toolbar>
+          <ScannerModal open={scanOpen} onClose={() => setScanOpen(false)} onDetect={(code) => setQ(code)} />
         </div>
 
         <DataTable
@@ -432,7 +443,7 @@ export function InventoryPage() {
             {headers.map((h) => (
               <div className="detail-item" key={h}>
                 <div className="detail-label">{labelOf(h)}</div>
-                <div className="detail-value">{selected[h] || <span className="muted">—</span>}</div>
+                <div className="detail-value">{selected[h] || <span className="muted">â€”</span>}</div>
               </div>
             ))}
           </div>

@@ -21,7 +21,7 @@ export async function createTestContext(): Promise<TestContext> {
   const dbFile = path.join(os.tmpdir(), `bulkrepair-test-${randomUUID()}.db`);
   const db = openDb(dbFile);
   migrate(db);
-  const app = createApp({ db, sessionTtlHours: 168 });
+  const app = createApp({ db, sessionTtlHours: 168, dbPath: dbFile });
 
   return {
     db,

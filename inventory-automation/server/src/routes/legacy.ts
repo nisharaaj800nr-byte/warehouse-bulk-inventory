@@ -92,7 +92,7 @@ function ok(data: unknown): { status: 'ok'; data: unknown } {
   return { status: 'ok', data };
 }
 
-export function legacyRouter(db: Db, sessionTtlHours: number): Router {
+export function legacyRouter(db: Db, sessionTtlHours: number, dbPath: string = ':memory:'): Router {
   const router = Router();
 
   router.post('/gas', async (req, res) => {
@@ -511,7 +511,7 @@ export function legacyRouter(db: Db, sessionTtlHours: number): Router {
       }
 
       default:
-        return dispatchExtended(db, action, params, role, email, ip, sessionTtlHours);
+        return dispatchExtended(db, action, params, role, email, ip, sessionTtlHours, dbPath);
     }
   }
 

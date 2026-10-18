@@ -1,7 +1,7 @@
 /* API client for the Bulk Repair backend (code-api.gs v1.1).
 
    Transports:
-   - gas : google.script.run â†’ runApi()            (when served by Apps Script)
+   - gas : google.script.run ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ runApi()            (when served by Apps Script)
    - http: POST JSON to the deployed /exec URL     (static hosting / dev)
    - demo: local fixtures, no network              (UI preview)
 
@@ -112,7 +112,78 @@ const PUBLIC_ACTIONS = new Set(['health', 'auth.login', 'auth.logout']);
 
 type Params = Record<string, unknown>;
 
-export async function callApi<T>(action: string, params: Params = {}): Promise<T> {
+/* ---------------- offline write queue ---------------- */
+
+const QUEUE_KEY = 'ors.pending';
+const OFFLINE_WRITABLE = new Set(['inventory.save', 'inventory.delete']);
+
+export interface QueuedWrite {
+  id: string;
+  action: string;
+  params: Params;
+  at: string;
+}
+
+function readQueue(): QueuedWrite[] {
+  try {
+    const raw = safeGet(QUEUE_KEY);
+    return raw ? (JSON.parse(raw) as QueuedWrite[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeQueue(items: QueuedWrite[]): void {
+  safeSet(QUEUE_KEY, JSON.stringify(items));
+}
+
+export const getQueuedCount = (): number => readQueue().length;
+
+function enqueue(action: string, params: Params): void {
+  const items = readQueue();
+  items.push({ id: Math.random().toString(36).slice(2), action, params, at: new Date().toISOString() });
+  writeQueue(items);
+}
+
+function isNetworkError(error: unknown): boolean {
+  if (error instanceof ApiError) {
+    return ['BACKEND_ERROR', 'NO_URL', 'BAD_RESPONSE', 'NO_TRANSPORT'].includes(error.code);
+  }
+  return error instanceof TypeError;
+}
+
+export async function flushQueuedWrites(): Promise<{ sent: number; left: number }> {
+  const items = readQueue();
+  if (items.length === 0) return { sent: 0, left: 0 };
+
+  const remaining: QueuedWrite[] = [];
+  let sent = 0;
+  for (const item of items) {
+    try {
+      await callApi(item.action, item.params, { bypassQueue: true });
+      sent += 1;
+    } catch {
+      remaining.push(item);
+    }
+  }
+  writeQueue(remaining);
+  return { sent, left: remaining.length };
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => {
+    void flushQueuedWrites();
+  });
+  window.setTimeout(() => {
+    if (navigator.onLine) void flushQueuedWrites();
+  }, 1500);
+}
+
+export async function callApi<T>(
+  action: string,
+  params: Params = {},
+  options: { bypassQueue?: boolean } = {}
+): Promise<T> {
   const mode = getApiMode();
   const token = getToken();
   const args: Params = { ...params };
@@ -129,6 +200,16 @@ export async function callApi<T>(action: string, params: Params = {}): Promise<T
     if (e.code === 'AUTH_REQUIRED' && token && !PUBLIC_ACTIONS.has(action)) {
       clearToken();
       emitUnauthorized();
+    }
+    if (!options.bypassQueue && OFFLINE_WRITABLE.has(action) && isNetworkError(e)) {
+      enqueue(action, params);
+      const queuedItem = (params['item'] ?? {}) as Record<string, unknown>;
+      return {
+        ok: true,
+        queued: true,
+        barcode: String(queuedItem['BARCODE'] ?? params['barcode'] ?? ''),
+        mode: 'queued',
+      } as unknown as T;
     }
     throw e;
   }

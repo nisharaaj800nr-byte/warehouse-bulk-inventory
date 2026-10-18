@@ -197,3 +197,25 @@ describe('first-run bootstrap', () => {
     }
   });
 });
+
+describe('backup', () => {
+  it('creates an online SQLite backup file', async () => {
+    const response = await request(ctx.app)
+      .post('/api/gas')
+      .send({ action: 'backup.run', params: { token } });
+
+    expect(response.body.status).toBe('ok');
+    expect(response.body.data.ok).toBe(true);
+    expect(response.body.data.bytes).toBeGreaterThan(0);
+    expect(require('node:fs').existsSync(response.body.data.file)).toBe(true);
+  });
+
+  it('rejects backup for non-admin roles', async () => {
+    const viewer = await seedAndLogin(ctx, { email: 'v2@local.test', password: 'ViewerPass123!', role: 'VIEWER' });
+    const response = await request(ctx.app)
+      .post('/api/gas')
+      .send({ action: 'backup.run', params: { token: viewer } });
+    expect(response.body.status).toBe('error');
+    expect(response.body.code).toBe('FORBIDDEN');
+  });
+});

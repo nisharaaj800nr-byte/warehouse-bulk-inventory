@@ -1,0 +1,13 @@
+{
+  "appId": "in.bulkrepair.app",
+  "appName": "Bulk Repair",
+  "webDir": "../server/public",
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true
+  },
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  }
+}

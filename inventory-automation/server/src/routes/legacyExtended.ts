@@ -9,6 +9,7 @@ import { parseWorkbookToRows } from '../services/fileImport.js';
 import { upsertInventory } from '../services/importService.js';
 import { loadRules } from '../services/rulesEngine.js';
 import type { MappedRow } from '../services/rulesEngine.js';
+import { runBackup } from '../services/backup.js';
 import { stageUpload } from '../services/staging.js';
 
 /**
@@ -70,7 +71,8 @@ export async function dispatchExtended(
   role: Role | null,
   email: string | null,
   ip: string | undefined,
-  ttlHours: number
+  ttlHours: number,
+  dbPath: string
 ): Promise<unknown> {
   const adminOnly = (): void => {
     if (!role || !['ADMIN', 'OWNER'].includes(role)) {
@@ -600,7 +602,7 @@ export async function dispatchExtended(
     case 'auth.bootstrap': {
       const userCount = Number((db.prepare('SELECT COUNT(*) AS c FROM users').get() as { c: number }).c);
       if (userCount > 0) {
-        throw new ApiError(409, 'DUPLICATE', 'Setup already completed on this server â€” sign in instead');
+        throw new ApiError(409, 'DUPLICATE', 'Setup already completed on this server ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â sign in instead');
       }
 
       const bootstrapEmail = String(params.email ?? '').trim().toLowerCase();
@@ -635,6 +637,11 @@ export async function dispatchExtended(
       };
     }
 
+    case 'backup.run': {
+      adminOnly();
+      const result = await runBackup(db, dbPath);
+      return { ok: true, ...result };
+    }
     /* ---------------- settings ---------------- */
     case 'settings.get': {
       const rows = db.prepare('SELECT key, value FROM settings').all() as unknown as Array<{ key: string; value: string }>;

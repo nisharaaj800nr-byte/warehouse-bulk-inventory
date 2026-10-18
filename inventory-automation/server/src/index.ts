@@ -3,6 +3,7 @@ import { loadConfig } from './config.js';
 import { openDb } from './db/index.js';
 import { migrate } from './db/migrate.js';
 import { logger } from './lib/logger.js';
+import { runBackup } from './services/backup.js';
 
 function main(): void {
   const config = loadConfig();
@@ -20,11 +21,29 @@ function main(): void {
     });
   });
 
+  // Automatic local backups: once after boot, then every 6 hours. Keeps the
+  // newest 7 files next to the database so a bad day is always recoverable.
+  const backupEveryMs = 6 * 60 * 60 * 1000;
+  const backupTimer = setTimeout(() => {
+    void runBackup(db, config.dbPath).catch((error) =>
+      logger.error('backup_failed', { message: (error as Error).message })
+    );
+  }, 5000);
+  const backupInterval = setInterval(() => {
+    void runBackup(db, config.dbPath).catch((error) =>
+      logger.error('backup_failed', { message: (error as Error).message })
+    );
+  }, backupEveryMs);
+  backupTimer.unref?.();
+  backupInterval.unref?.();
+
   let shuttingDown = false;
   const shutdown = (signal: string) => {
     if (shuttingDown) return;
     shuttingDown = true;
     logger.info('server_stopping', { signal });
+    clearTimeout(backupTimer);
+    clearInterval(backupInterval);
     server.close(() => {
       try {
         db.close();

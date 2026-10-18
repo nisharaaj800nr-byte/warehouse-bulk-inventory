@@ -17,6 +17,7 @@ import { ChangePasswordDialog, useAuth } from '../features/auth';
 import { Button } from '../ui/base';
 import { DropdownMenu } from '../ui/overlay';
 import { isDemoMode } from '../lib/api';
+import { translate, useLang, type Lang } from '../lib/i18n';
 
 export function Shell() {
   const { session, logout } = useAuth();
@@ -25,6 +26,7 @@ export function Shell() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pwOpen, setPwOpen] = useState(false);
   const location = useLocation();
+  const [lang, changeLang] = useLang();
 
   const title = useMemo(() => {
     for (const g of NAV_GROUPS) {
@@ -70,7 +72,7 @@ export function Shell() {
         <nav className="side-nav">
           {groups.map((g) => (
             <div className="navgroup" key={g.group}>
-              <div className="navgroup-title">{g.group}</div>
+              <div className="navgroup-title">{translate(g.group, lang)}</div>
               {g.items.map((it) => (
                 <NavLink
                   key={it.to}
@@ -82,13 +84,33 @@ export function Shell() {
                   <span className="nl-ic">
                     <it.icon size={17} />
                   </span>
-                  <span className="nl-label">{it.label}</span>
+                  <span className="nl-label">{translate(it.label, lang)}</span>
                 </NavLink>
               ))}
             </div>
           ))}
         </nav>
         <div className="side-foot">
+          <select
+            aria-label="Language"
+            value={lang}
+            onChange={(event) => changeLang(event.target.value as Lang)}
+            style={{ width: '100%', marginBottom: 8, padding: '4px 6px', borderRadius: 6 }}
+          >
+            <option value="en">English</option>
+            <option value="hi">हिन्दी</option>
+            <option value="gu">ગુજરાતી</option>
+          </select>
+          <select
+            aria-label="Language"
+            value={lang}
+            onChange={(event) => changeLang(event.target.value as Lang)}
+            style={{ width: '100%', marginBottom: 8, padding: '4px 6px', borderRadius: 6 }}
+          >
+            <option value="en">English</option>
+            <option value="hi">à¤¹à¤¿à¤¨à¥à¤¦à¥€</option>
+            <option value="gu">àª—à«àªœàª°àª¾àª¤à«€</option>
+          </select>
           <Button
             variant="ghost"
             size="sm"
@@ -104,7 +126,7 @@ export function Shell() {
       <div className="main">
         {isDemoMode() && (
           <div className="banner">
-            <FlaskConical size={14} /> Demo mode — sample data only. Sign out to exit.
+            <FlaskConical size={14} /> Demo mode Ã¢â‚¬â€ sample data only. Sign out to exit.
           </div>
         )}
         <header className="topbar">

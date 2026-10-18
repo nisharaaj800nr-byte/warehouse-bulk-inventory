@@ -48,7 +48,7 @@ const FILTER_COLUMNS: Record<string, string> = {
   SOURCE_TYPE: 'source_type'
 };
 
-const PUBLIC_ACTIONS = new Set(['health', 'auth.login', 'auth.logout', 'auth.bootstrap']);
+const PUBLIC_ACTIONS = new Set(['health', 'auth.login', 'auth.logout', 'auth.bootstrap', 'auth.google']);
 
 interface InventoryRow {
   id: number;

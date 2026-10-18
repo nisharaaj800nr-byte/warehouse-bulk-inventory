@@ -53,6 +53,7 @@ function createWindow() {
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   createWindow();
+  startAutoUpdate();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -62,3 +63,23 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
+
+/**
+ * Optional desktop auto-update. Only runs when a feed URL is provided at build
+ * or run time (UPDATE_FEED_URL), so builds without a release server never fail.
+ */
+function startAutoUpdate() {
+  const feed = process.env.UPDATE_FEED_URL;
+  if (!feed || !app.isPackaged) return;
+
+  try {
+    const { autoUpdater } = require('electron-updater');
+    autoUpdater.setFeedURL({ provider: 'generic', url: feed });
+    autoUpdater.autoDownload = true;
+    autoUpdater.checkForUpdatesAndNotify().catch((error) => {
+      console.warn('auto-update check failed:', error && error.message ? error.message : error);
+    });
+  } catch (error) {
+    console.warn('auto-update unavailable:', error && error.message ? error.message : error);
+  }
+}

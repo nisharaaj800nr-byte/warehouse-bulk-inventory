@@ -13,7 +13,18 @@ const KNOWN_FIELDS: { key: string; label: string; type: 'text' | 'password' | 's
   { key: 'TELEGRAM_BOT_TOKEN', label: 'Telegram bot token', type: 'password', hint: 'From @BotFather' },
   { key: 'TELEGRAM_CHAT_ID', label: 'Telegram chat ID', type: 'text', hint: 'Where alerts are sent' },
   { key: 'AUTO_BACKUP', label: 'Auto backup (with daily process)', type: 'switch' },
-  { key: 'BACKUP_FOLDER_ID', label: 'Backup folder ID (Drive)', type: 'text', hint: 'Optional â€” Drive folder for backups' },
+  { key: 'BACKUP_FOLDER_ID', label: 'Backup folder ID (Drive)', type: 'text', hint: 'Optional Ã¢â‚¬â€ Drive folder for backups' },
+  { key: 'SMTP_HOST', label: 'SMTP host', type: 'text', hint: 'e.g. smtp.gmail.com' },
+  { key: 'SMTP_PORT', label: 'SMTP port', type: 'text', hint: '587 for TLS' },
+  { key: 'SMTP_USER', label: 'SMTP user', type: 'text' },
+  { key: 'SMTP_PASS', label: 'SMTP password', type: 'password' },
+  { key: 'SMTP_FROM', label: 'From address', type: 'text' },
+  { key: 'ALERT_EMAIL_TO', label: 'Alert email recipients', type: 'text', hint: 'Comma separated' },
+  { key: 'WHATSAPP_TOKEN', label: 'WhatsApp Cloud API token', type: 'password' },
+  { key: 'WHATSAPP_PHONE_ID', label: 'WhatsApp phone number id', type: 'text' },
+  { key: 'ALERT_WHATSAPP_TO', label: 'Alert WhatsApp number', type: 'text', hint: 'With country code, e.g. 9198…' },
+  { key: 'GOOGLE_CLIENT_ID', label: 'Google OAuth client ID', type: 'text', hint: 'For Sign in with Google' },
+  { key: 'GOOGLE_AUTO_CREATE', label: 'Auto-create Google users (VIEWER)', type: 'switch' }
 ];
 
 export function SettingsPage() {
@@ -50,8 +61,8 @@ export function SettingsPage() {
   const tgTest = useMutation({
     mutationFn: () => api.telegramTest(),
     onSuccess: (res) => {
-      if (res.ok) toast.ok('Telegram test message sent â€” check the chat.');
-      else toast.error('Telegram send failed â€” verify bot token and chat ID.');
+      if (res.ok) toast.ok('Telegram test message sent Ã¢â‚¬â€ check the chat.');
+      else toast.error('Telegram send failed Ã¢â‚¬â€ verify bot token and chat ID.');
     },
     onError: (e) => toast.error(errorMessage(e)),
   });
@@ -65,7 +76,7 @@ export function SettingsPage() {
   const backup = useMutation({
     mutationFn: () => api.backupRun(),
     onSuccess: (res) => {
-      if (res['skipped']) toast.info('Auto backup is OFF â€” enable AUTO_BACKUP first.');
+      if (res['skipped']) toast.info('Auto backup is OFF Ã¢â‚¬â€ enable AUTO_BACKUP first.');
       else if (res['error']) toast.error(String(res['error']));
       else toast.ok(`Backup created: ${String(res['name'] ?? res['backupId'] ?? '')}`);
     },
@@ -76,7 +87,7 @@ export function SettingsPage() {
     mutationFn: () => api.selftest(),
     onSuccess: (res) => {
       if (res.ok) toast.ok('Self-test passed.');
-      else toast.warn('Self-test finished with failures â€” see details below.');
+      else toast.warn('Self-test finished with failures Ã¢â‚¬â€ see details below.');
     },
     onError: (e) => toast.error(errorMessage(e)),
   });
@@ -108,7 +119,7 @@ export function SettingsPage() {
         }
       />
 
-      <Card title="System settings" actions={!canAdmin ? <span className="hint">Admin only â€” read-only for your role</span> : undefined}>
+      <Card title="System settings" actions={!canAdmin ? <span className="hint">Admin only Ã¢â‚¬â€ read-only for your role</span> : undefined}>
         <div className="form-grid">
           {KNOWN_FIELDS.map((f) => (
             <Field key={f.key} label={f.label} hint={f.hint}>
@@ -189,7 +200,7 @@ export function SettingsPage() {
             </div>            {mode === 'http' && (
               <div className="row" style={{ gap: 8, alignItems: 'flex-end' }}>
                 <Field label="Backend /exec URL">
-                  <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://script.google.com/macros/s/â€¦/exec" />
+                  <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://script.google.com/macros/s/Ã¢â‚¬Â¦/exec" />
                 </Field>
                 <Button onClick={() => setApiUrl(url)} disabled={!url.trim().startsWith('http')}>
                   Save URL
@@ -198,9 +209,9 @@ export function SettingsPage() {
             )}
             <span className="hint">
               {mode === 'gas'
-                ? 'Served directly by Apps Script â€” no URL needed.'
+                ? 'Served directly by Apps Script Ã¢â‚¬â€ no URL needed.'
                 : mode === 'demo'
-                  ? 'Sample data only â€” no backend calls.'
+                  ? 'Sample data only Ã¢â‚¬â€ no backend calls.'
                   : 'Paste the deployed web-app URL ending with /exec.'}
             </span>
           </div>

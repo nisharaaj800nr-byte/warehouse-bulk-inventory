@@ -21,6 +21,7 @@ import { DataTable, Pagination, type Column } from '../ui/table';
 import { ConfirmDialog, Drawer, DropdownMenu, Modal, useToast } from '../ui/overlay';
 import { useAuth } from './auth';
 import { ScannerModal } from './scanner';
+import { BulkEditButton } from './bulk-edit';
 
 const FILTER_FIELDS = ['STATUS_BUCKET', 'AGE_BUCKET', 'BRAND', 'CATEGORY', 'PRIORITY', 'BIN_BUCKET', 'SOURCE'];
 const HIDDEN_KEY = 'ors.inv.hidden';
@@ -42,7 +43,7 @@ function BucketBadge({ value }: { value: string }) {
 }
 
 function renderCell(header: string, value: string) {
-  if (!value) return <span className="muted">ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â</span>;
+  if (!value) return <span className="muted">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â</span>;
   if (header === 'STATUS_BUCKET' || header === 'STATUS' || header === 'AGE_BUCKET') {
     return <BucketBadge value={value} />;
   }
@@ -114,7 +115,7 @@ function ItemDialog({
       {err && <div className="login-err">{err}</div>}
       <div className="form-grid">
         {headers.map((h) => (
-          <Field key={h} label={labelOf(h)} hint={isEdit && h === 'BARCODE' ? 'Key column ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â not editable.' : undefined}>
+          <Field key={h} label={labelOf(h)} hint={isEdit && h === 'BARCODE' ? 'Key column ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â not editable.' : undefined}>
             <Input
               value={values[h] ?? ''}
               disabled={isEdit && h === 'BARCODE'}
@@ -332,11 +333,12 @@ export function InventoryPage() {
               <Input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Search inventoryÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦"
+                placeholder="Search inventoryÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦"
                 style={{ paddingLeft: 32 }}
                 aria-label="Search inventory"
               />
             </div>
+            <BulkEditButton onDone={() => void list.refetch()} />
             <Button
               size="sm"
               icon={<ScanLine size={14} />}
@@ -480,7 +482,7 @@ export function InventoryPage() {
             {headers.map((h) => (
               <div className="detail-item" key={h}>
                 <div className="detail-label">{labelOf(h)}</div>
-                <div className="detail-value">{selected[h] || <span className="muted">ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â</span>}</div>
+                <div className="detail-value">{selected[h] || <span className="muted">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â</span>}</div>
               </div>
             ))}
           </div>

@@ -12,6 +12,8 @@ import type { MappedRow } from '../services/rulesEngine.js';
 import { runBackup } from '../services/backup.js';
 import { bulkUpdate, type BulkPatch } from '../services/bulk.js';
 import { sendTestEmail } from '../services/mailer.js';
+import { sendWhatsAppTest } from '../services/whatsapp.js';
+import { authenticateWithGoogle } from '../services/googleAuth.js';
 import { toPdfBuffer, toXlsxBuffer } from '../services/reportExport.js';
 import { stageUpload } from '../services/staging.js';
 
@@ -605,7 +607,7 @@ export async function dispatchExtended(
     case 'auth.bootstrap': {
       const userCount = Number((db.prepare('SELECT COUNT(*) AS c FROM users').get() as { c: number }).c);
       if (userCount > 0) {
-        throw new ApiError(409, 'DUPLICATE', 'Setup already completed on this server ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â sign in instead');
+        throw new ApiError(409, 'DUPLICATE', 'Setup already completed on this server ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â sign in instead');
       }
 
       const bootstrapEmail = String(params.email ?? '').trim().toLowerCase();
@@ -687,6 +689,18 @@ export async function dispatchExtended(
       adminOnly();
       const mailResult = await sendTestEmail(db, params.to ? String(params.to) : undefined);
       return { sentTo: mailResult.sentTo };
+    }
+    case 'auth.google': {
+      const idToken = String(params.idToken ?? params.credential ?? '');
+      if (!idToken) throw new ApiError(400, 'BAD_REQUEST', 'Google credential missing');
+      const result = await authenticateWithGoogle(db, idToken, ttlHours, ip);
+      return { token: result.token, email: result.email, role: result.role, expiresAt: result.expiresAt };
+    }
+
+    case 'alerts.whatsappTest': {
+      adminOnly();
+      const waResult = await sendWhatsAppTest(db, params.to ? String(params.to) : undefined);
+      return { sentTo: waResult.sentTo };
     }
     /* ---------------- settings ---------------- */
     case 'settings.get': {

@@ -24,9 +24,17 @@
       "main.cjs",
       "panel/**/*"
     ],
-    "win": { "target": ["portable"], "signAndEditExecutable": false },
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "signAndEditExecutable": false
+    },
     "portable": {
       "artifactName": "BulkRepair-${version}-portable.exe"
     }
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
   }
 }

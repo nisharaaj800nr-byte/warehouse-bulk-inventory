@@ -133,3 +133,29 @@ describe('bridge exports', () => {
     expect(response.body.data.updated).toBe(1);
   });
 });
+
+describe('external integrations are explicit when unconfigured', () => {
+  it('reports WhatsApp as not configured', async () => {
+    const response = await request(ctx.app)
+      .post('/api/alerts/whatsapp-test')
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+    expect(response.status).toBe(400);
+    expect(response.body.error.message).toContain('WHATSAPP_TOKEN');
+  });
+
+  it('reports Google login as not configured', async () => {
+    const response = await request(ctx.app)
+      .post('/api/gas')
+      .send({ action: 'auth.google', params: { idToken: 'dummy-token' } });
+    expect(response.body.status).toBe('error');
+    expect(response.body.code).toBe('VALIDATION_ERROR');
+    expect(response.body.message).toContain('GOOGLE_CLIENT_ID');
+  });
+
+  it('rejects a Google login without a credential', async () => {
+    const response = await request(ctx.app).post('/api/gas').send({ action: 'auth.google', params: {} });
+    expect(response.body.status).toBe('error');
+    expect(response.body.code).toBe('BAD_REQUEST');
+  });
+});

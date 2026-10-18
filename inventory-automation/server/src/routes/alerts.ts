@@ -6,6 +6,7 @@ import { writeAudit } from '../lib/audit.js';
 import { fail } from '../lib/errors.js';
 import { parseInput } from '../lib/validate.js';
 import { sendTestEmail } from '../services/mailer.js';
+import { sendWhatsAppTest } from '../services/whatsapp.js';
 
 const ALERT_TYPES = ['AGE_OVER', 'STATUS_BUCKET_COUNT', 'MISSING_FIELD'] as const;
 const MISSING_FIELDS = ['model', 'brand', 'status', 'location', 'bin_bucket', 'age_bucket', 'status_bucket'] as const;
@@ -224,6 +225,15 @@ export function alertsRouter(db: Db): Router {
     try {
       const to = typeof req.body?.to === 'string' ? req.body.to : undefined;
       const result = await sendTestEmail(db, to);
+      res.status(200).json({ ok: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  });
+  router.post('/alerts/whatsapp-test', auth, admin, async (req, res, next) => {
+    try {
+      const to = typeof req.body?.to === 'string' ? req.body.to : undefined;
+      const result = await sendWhatsAppTest(db, to);
       res.status(200).json({ ok: true, data: result });
     } catch (error) {
       next(error);

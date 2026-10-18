@@ -96,7 +96,16 @@ export function legacyRouter(db: Db, sessionTtlHours: number): Router {
   const router = Router();
 
   router.post('/gas', async (req, res) => {
-    const body = (req.body ?? {}) as { action?: string; params?: Record<string, unknown> };
+    let parsedBody: unknown = req.body;
+    if (typeof parsedBody === 'string') {
+      try {
+        parsedBody = JSON.parse(parsedBody);
+      } catch {
+        res.status(200).json({ status: 'error', code: 'BAD_REQUEST', message: 'Body is not valid JSON' });
+        return;
+      }
+    }
+    const body = (parsedBody ?? {}) as { action?: string; params?: Record<string, unknown> };
     const action = String(body.action ?? '');
     const params = (body.params ?? {}) as Record<string, unknown>;
 

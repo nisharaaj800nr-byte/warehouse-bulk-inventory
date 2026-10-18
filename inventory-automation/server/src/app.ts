@@ -27,6 +27,20 @@ export function createApp({ db, sessionTtlHours }: AppOptions): Express {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', true);
+  // Packaged desktop/mobile shells load the panel from file:// or a custom
+  // scheme, so the API must accept those origins and text/plain bodies
+  // (the panel avoids preflight by sending text/plain).
+  app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(204);
+      return;
+    }
+    next();
+  });
+  app.use(express.text({ type: 'text/plain', limit: '10mb' }));
   app.use(express.json({ limit: '5mb' }));
 
   app.use((req, _res, next) => {

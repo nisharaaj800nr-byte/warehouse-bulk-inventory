@@ -1,0 +1,32 @@
+{
+  "name": "bulk-repair-desktop",
+  "productName": "Bulk Repair",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bulk Repair inventory app (desktop shell)",
+  "main": "main.cjs",
+  "scripts": {
+    "panel": "node scripts/copy-panel.mjs",
+    "start": "npm run panel && electron .",
+    "dist": "npm run panel && electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^35.1.4",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "in.bulkrepair.desktop",
+    "productName": "Bulk Repair",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.cjs",
+      "panel/**/*"
+    ],
+    "win": { "target": ["portable"], "signAndEditExecutable": false },
+    "portable": {
+      "artifactName": "BulkRepair-${version}-portable.exe"
+    }
+  }
+}

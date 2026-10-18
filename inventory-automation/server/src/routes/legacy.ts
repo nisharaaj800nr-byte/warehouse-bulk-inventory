@@ -48,7 +48,7 @@ const FILTER_COLUMNS: Record<string, string> = {
   SOURCE_TYPE: 'source_type'
 };
 
-const PUBLIC_ACTIONS = new Set(['health', 'auth.login', 'auth.logout']);
+const PUBLIC_ACTIONS = new Set(['health', 'auth.login', 'auth.logout', 'auth.bootstrap']);
 
 interface InventoryRow {
   id: number;
@@ -502,7 +502,7 @@ export function legacyRouter(db: Db, sessionTtlHours: number): Router {
       }
 
       default:
-        return dispatchExtended(db, action, params, role, email, ip);
+        return dispatchExtended(db, action, params, role, email, ip, sessionTtlHours);
     }
   }
 

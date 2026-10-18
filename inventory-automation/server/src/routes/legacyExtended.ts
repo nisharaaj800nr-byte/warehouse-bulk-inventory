@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Db } from '../db/index.js';
 import { hashPassword } from '../auth/password.js';
+import { authenticate } from '../services/authService.js';
 import { ROLES, type Role } from '../auth/tokens.js';
 import { ApiError } from '../lib/errors.js';
 import { writeAudit } from '../lib/audit.js';
@@ -68,7 +69,8 @@ export async function dispatchExtended(
   params: Record<string, unknown>,
   role: Role | null,
   email: string | null,
-  ip: string | undefined
+  ip: string | undefined,
+  ttlHours: number
 ): Promise<unknown> {
   const adminOnly = (): void => {
     if (!role || !['ADMIN', 'OWNER'].includes(role)) {
@@ -592,6 +594,45 @@ export async function dispatchExtended(
         existing.id
       );
       return { reset: true };
+    }
+
+    /* ---------------- first-run bootstrap ---------------- */
+    case 'auth.bootstrap': {
+      const userCount = Number((db.prepare('SELECT COUNT(*) AS c FROM users').get() as { c: number }).c);
+      if (userCount > 0) {
+        throw new ApiError(409, 'DUPLICATE', 'Setup already completed on this server â€” sign in instead');
+      }
+
+      const bootstrapEmail = String(params.email ?? '').trim().toLowerCase();
+      const bootstrapPassword = String(params.password ?? '');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(bootstrapEmail)) {
+        throw new ApiError(400, 'BAD_REQUEST', 'Enter a valid email address');
+      }
+      if (bootstrapPassword.length < 8) {
+        throw new ApiError(400, 'BAD_REQUEST', 'Password must be at least 8 characters');
+      }
+
+      const createdAt = new Date().toISOString();
+      db.prepare(
+        `INSERT INTO users (email, password_hash, role, is_active, failed_attempts, locked_until, last_login_at, created_at, updated_at)
+         VALUES (?, ?, 'OWNER', 1, 0, NULL, NULL, ?, ?)`
+      ).run(bootstrapEmail, await hashPassword(bootstrapPassword), createdAt, createdAt);
+
+      writeAudit(db, {
+        actorEmail: bootstrapEmail,
+        action: 'OWNER_BOOTSTRAPPED',
+        entity: 'user',
+        details: { surface: 'setup-wizard' },
+        ip
+      });
+
+      const session = await authenticate(db, { email: bootstrapEmail, password: bootstrapPassword, ip }, ttlHours);
+      return {
+        token: session.token,
+        email: session.user.email,
+        role: session.user.role,
+        expiresAt: session.expiresAt
+      };
     }
 
     /* ---------------- settings ---------------- */

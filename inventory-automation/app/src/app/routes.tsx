@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { LoginPage, useAuth } from '../features/auth';
+import { SetupPage } from '../features/setup';
 import { DashboardPage } from '../features/dashboard';
 import { InventoryPage } from '../features/inventory';
 import { ImportsPage } from '../features/imports';
@@ -16,20 +17,26 @@ import { AssistantPage } from '../features/assistant';
 import { Shell } from '../layout/Shell';
 import { Button } from '../ui/base';
 import { hasRole } from '../lib/utils';
-import type { Role } from '../lib/api';
+import { isSetupDone, type Role } from '../lib/api';
 
 export function Splash() {
   return (
     <div className="splash">
       <div className="splash-logo">BR</div>
-      <div>Loading portal…</div>
+      <div>Loading portal�?�</div>
     </div>
   );
+}
+
+function RequireSetup({ children }: { children: ReactNode }) {
+  if (!isSetupDone()) return <Navigate to="/setup" replace />;
+  return <>{children}</>;
 }
 
 function RequireAuth() {
   const { status } = useAuth();
   const location = useLocation();
+  if (!isSetupDone()) return <Navigate to="/setup" replace />;
   if (status === 'loading') return <Splash />;
   if (status === 'anon') return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   return <Shell />;
@@ -71,7 +78,15 @@ function NotFound() {
 export function AppRoutes() {
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
+      <Route path="/setup" element={<SetupPage />} />
+      <Route
+        path="/login"
+        element={
+          <RequireSetup>
+            <LoginPage />
+          </RequireSetup>
+        }
+      />
       <Route path="/" element={<RequireAuth />}>
         <Route index element={<DashboardPage />} />
         <Route path="inventory" element={<InventoryPage />} />

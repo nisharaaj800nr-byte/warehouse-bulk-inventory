@@ -156,3 +156,44 @@ describe('configuration writes through the bridge', () => {
     expect(response.body.data.groups[0].key).toBe('Apple');
   });
 });
+
+describe('first-run bootstrap', () => {
+  it('creates the first owner once and returns a working token', async () => {
+    const fresh = await createTestContext();
+    try {
+      const first = await request(fresh.app)
+        .post('/api/gas')
+        .send({ action: 'auth.bootstrap', params: { email: 'owner@shop.local', password: 'OwnerPass123!' } });
+
+      expect(first.body.status).toBe('ok');
+      expect(first.body.data.role).toBe('OWNER');
+      expect(first.body.data.token).toMatch(/^[0-9a-f]{64}$/);
+
+      const whoami = await request(fresh.app)
+        .post('/api/gas')
+        .send({ action: 'auth.whoami', params: { token: first.body.data.token } });
+      expect(whoami.body.data.email).toBe('owner@shop.local');
+
+      const second = await request(fresh.app)
+        .post('/api/gas')
+        .send({ action: 'auth.bootstrap', params: { email: 'other@shop.local', password: 'OtherPass123!' } });
+      expect(second.body.status).toBe('error');
+      expect(second.body.code).toBe('DUPLICATE');
+    } finally {
+      fresh.cleanup();
+    }
+  });
+
+  it('rejects weak bootstrap credentials', async () => {
+    const fresh = await createTestContext();
+    try {
+      const response = await request(fresh.app)
+        .post('/api/gas')
+        .send({ action: 'auth.bootstrap', params: { email: 'bad', password: '123' } });
+      expect(response.body.status).toBe('error');
+      expect(response.body.code).toBe('BAD_REQUEST');
+    } finally {
+      fresh.cleanup();
+    }
+  });
+});

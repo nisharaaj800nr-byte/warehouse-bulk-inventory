@@ -1,7 +1,7 @@
 /* API client for the Bulk Repair backend (code-api.gs v1.1).
 
    Transports:
-   - gas : google.script.run → runApi()            (when served by Apps Script)
+   - gas : google.script.run â†’ runApi()            (when served by Apps Script)
    - http: POST JSON to the deployed /exec URL     (static hosting / dev)
    - demo: local fixtures, no network              (UI preview)
 
@@ -36,10 +36,17 @@ function safeRemove(key: string): void {
 const TOKEN_KEY = 'ors.token';
 const URL_KEY = 'ors.apiUrl';
 const MODE_KEY = 'ors.mode';
+const SHEET_KEY = 'ors.sheet';
+const SETUP_KEY = 'ors.setup';
 
 export const getToken = (): string => safeGet(TOKEN_KEY);
 export const setToken = (t: string): void => safeSet(TOKEN_KEY, t);
 export const clearToken = (): void => safeRemove(TOKEN_KEY);
+export const getSheetUrl = (): string => safeGet(SHEET_KEY);
+export const setSheetUrl = (url: string): void => safeSet(SHEET_KEY, url.trim());
+export const isSetupDone = (): boolean => safeGet(SETUP_KEY) === 'yes';
+export const markSetupDone = (done: boolean): void => { if (done) safeSet(SETUP_KEY, 'yes'); else safeRemove(SETUP_KEY); };
+export const clearApiUrl = (): void => safeRemove(URL_KEY);
 
 export const getApiUrl = (): string => {
   const stored = safeGet(URL_KEY);
@@ -242,6 +249,8 @@ export const api = {
   health: () => callApi<Record<string, unknown>>('health'),
   login: (email: string, password: string, rememberMe: boolean) =>
     callApi<LoginResult>('auth.login', { email, password, rememberMe }),
+  bootstrapOwner: (email: string, password: string) =>
+    callApi<LoginResult>('auth.bootstrap', { email, password }),
   logout: () => callApi<{ revoked: boolean }>('auth.logout', { token: getToken() }),
   whoami: () => callApi<SessionInfo>('auth.whoami'),
   changePassword: (oldPassword: string, newPassword: string) =>

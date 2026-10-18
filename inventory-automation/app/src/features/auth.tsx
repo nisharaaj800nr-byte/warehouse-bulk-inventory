@@ -28,6 +28,7 @@ import { errorMessage, queryClient } from '../lib/query';
 import { Button, Field, Input, Spinner } from '../ui/base';
 import { Modal, useToast } from '../ui/overlay';
 import { useTheme } from '../lib/utils';
+import { GoogleSignIn } from './google-signin';
 
 interface SessionState {
   email: string;
@@ -91,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(null);
       setStatus('anon');
       queryClient.clear();
-      toast.warn('Session expired — please sign in again.');
+      toast.warn('Session expired â€” please sign in again.');
     });
   }, [toast]);
 
@@ -123,7 +124,7 @@ function SplashInline() {
     <div className="splash">
       <div className="splash-logo">BR</div>
       <div className="row" style={{ gap: 8 }}>
-        <Spinner size={14} /> Loading…
+        <Spinner size={14} /> Loadingâ€¦
       </div>
     </div>
   );
@@ -190,9 +191,9 @@ export function LoginPage() {
       <div className="login-brand">
         <div className="login-brand-inner">
           <div className="login-logo">BR</div>
-          <div className="login-big">Bulk Repair — Inventory Portal</div>
+          <div className="login-big">Bulk Repair â€” Inventory Portal</div>
           <p className="login-tagline">
-            Run the daily pipeline, browse inventory, and keep every record audit-ready — one place, from anywhere.
+            Run the daily pipeline, browse inventory, and keep every record audit-ready â€” one place, from anywhere.
           </p>
           <ul className="login-features">
             <li>
@@ -238,7 +239,7 @@ export function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                 autoComplete="current-password"
                 required
               />
@@ -250,12 +251,13 @@ export function LoginPage() {
               </label>
             </div>
             <Button variant="primary" size="lg" type="submit" loading={busy} style={{ width: '100%' }}>
-              {busy ? 'Signing in…' : 'Sign in'}
+              {busy ? 'Signing inâ€¦' : 'Sign in'}
             </Button>
           </form>
+        <GoogleSignIn onError={setError} />
           <div className="login-alt">
             <button type="button" onClick={startDemo} disabled={demoBusy}>
-              {demoBusy ? 'Loading demo…' : 'Explore demo (sample data)'}
+              {demoBusy ? 'Loading demoâ€¦' : 'Explore demo (sample data)'}
             </button>
           </div>
           {getApiMode() === 'http' && (
@@ -265,11 +267,11 @@ export function LoginPage() {
               </button>
               {showConn && (
                 <div style={{ marginTop: 10, textAlign: 'left' }}>
-                  <Field label="Apps Script /exec URL" hint="Deploy → Web app URL (ends with /exec)">
+                  <Field label="Apps Script /exec URL" hint="Deploy â†’ Web app URL (ends with /exec)">
                     <Input
                       value={url}
                       onChange={(e) => setUrl(e.target.value)}
-                      placeholder="https://script.google.com/macros/s/…/exec"
+                      placeholder="https://script.google.com/macros/s/â€¦/exec"
                     />
                   </Field>
                   <Button onClick={saveUrl} disabled={!url.trim().startsWith('http')}>

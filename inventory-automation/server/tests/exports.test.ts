@@ -159,3 +159,23 @@ describe('external integrations are explicit when unconfigured', () => {
     expect(response.body.code).toBe('BAD_REQUEST');
   });
 });
+
+describe('google config + dashboard distributions', () => {
+  it('exposes google config publicly without a client id', async () => {
+    const response = await request(ctx.app).post('/api/gas').send({ action: 'auth.googleConfig', params: {} });
+    expect(response.body.status).toBe('ok');
+    expect(response.body.data.enabled).toBe(false);
+    expect(response.body.data.clientId).toBe('');
+  });
+
+  it('returns status and age distributions on the dashboard', async () => {
+    const response = await request(ctx.app)
+      .post('/api/gas')
+      .send({ action: 'dashboard', params: { token } });
+
+    expect(response.body.status).toBe('ok');
+    expect(Array.isArray(response.body.data.byStatus)).toBe(true);
+    expect(response.body.data.byStatus.length).toBeGreaterThan(0);
+    expect(Array.isArray(response.body.data.byAgeBucket)).toBe(true);
+  });
+});

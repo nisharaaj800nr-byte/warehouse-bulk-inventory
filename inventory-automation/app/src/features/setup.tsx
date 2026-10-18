@@ -13,6 +13,7 @@ import {
   setToken,
 } from '../lib/api';
 import { Badge, Button, Card, Field, Input } from '../ui/base';
+import { GoogleSignIn } from './google-signin';
 
 type Backend = 'local' | 'gas';
 
@@ -113,7 +114,7 @@ export function SetupPage() {
           <div>
             <h2 style={{ margin: 0 }}>Bulk Repair setup</h2>
             <p className="muted" style={{ margin: 0 }}>
-              Step {step} of 3 — ek baar setup, phir seedha app khulega.
+              Step {step} of 3 Ã¢â‚¬â€ ek baar setup, phir seedha app khulega.
             </p>
           </div>
         </div>
@@ -229,6 +230,7 @@ export function SetupPage() {
                   ? 'Ye account is computer ke local server pe OWNER ke roop me banega.'
                   : 'Wahi email/password jo aapke Apps Script deployment me hai.'}
               </p>
+              {backend === 'gas' && <GoogleSignIn onError={setError} />}
             </div>
           </Card>
         )}
@@ -258,7 +260,7 @@ export function SetupPage() {
         </div>
 
         <p className="hint" style={{ marginTop: 12 }}>
-          Setup dobara badalna ho to: Settings → Connection.
+          Setup dobara badalna ho to: Settings Ã¢â€ â€™ Connection.
         </p>
       </div>
     </div>

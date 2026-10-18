@@ -1,3 +1,4 @@
+import { translate } from '../lib/i18n';
 /* Dashboard: KPIs, ageing trend chart, recent runs/errors, quick actions. */
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -34,9 +35,44 @@ const TREND_COLORS = ['#2E75B6', '#1E8E3E', '#E0A63D', '#C5221F'];
 function StatusBadge({ value }: { value: string }) {
   const v = value.toUpperCase();
   const tone = v === 'OK' ? 'ok' : v === 'PARTIAL' ? 'warn' : v === 'FAILED' || v === 'ERROR' ? 'danger' : 'neutral';
-  return <Badge tone={tone}>{value || '—'}</Badge>;
+  return <Badge tone={tone}>{value || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'}</Badge>;
 }
 
+function DistributionBars({ title, data }: { title: string; data?: Array<{ key: string; count: number }> }) {
+  const rows = data ?? [];
+  const max = Math.max(1, ...rows.map((row) => row.count));
+
+  return (
+    <Card title={title} actions={<span className="hint">Top {rows.length}</span>}>
+      {rows.length === 0 ? (
+        <span className="hint">No data yet.</span>
+      ) : (
+        <div className="stack" style={{ gap: 10 }}>
+          {rows.map((row) => (
+            <div key={row.key}>
+              <div className="row" style={{ justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: 12.5 }}>{row.key}</span>
+                <span className="muted" style={{ fontSize: 12 }}>
+                  {row.count}
+                </span>
+              </div>
+              <div style={{ height: 6, background: 'var(--line)', borderRadius: 3 }}>
+                <div
+                  style={{
+                    width: `${Math.round((row.count / max) * 100)}%`,
+                    height: '100%',
+                    background: 'var(--brand)',
+                    borderRadius: 3,
+                  }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
 export function DashboardPage() {
   const { session } = useAuth();
   const toast = useToast();
@@ -101,7 +137,7 @@ export function DashboardPage() {
   return (
     <div className="stack">
       <PageHeader
-        title="Dashboard"
+        title={translate('Dashboard')}
         subtitle="Live overview of your inventory operations."
         actions={
           <>
@@ -162,6 +198,10 @@ export function DashboardPage() {
         </div>
       ) : null}
 
+      <div className="grid-2">
+        <DistributionBars title="By status" data={dash.data?.byStatus} />
+        <DistributionBars title="By age bucket" data={dash.data?.byAgeBucket} />
+      </div>
       <Card
         title="Ageing trend"
         actions={<span className="hint">Daily snapshots by age bucket</span>}
@@ -204,8 +244,8 @@ export function DashboardPage() {
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Line type="monotone" dataKey="below30" name="Below 30" stroke={TREND_COLORS[0]} strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="m30" name="30–60" stroke={TREND_COLORS[1]} strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="m60" name="60–75" stroke={TREND_COLORS[2]} strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="m30" name="30ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“60" stroke={TREND_COLORS[1]} strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="m60" name="60ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“75" stroke={TREND_COLORS[2]} strokeWidth={2} dot={false} />
                 <Line type="monotone" dataKey="above75" name="Above 75" stroke={TREND_COLORS[3]} strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
@@ -229,7 +269,7 @@ export function DashboardPage() {
             rows={errs}
             rowKey={(_r, i) => 'err-' + i}
             loading={dash.isFetching && errs.length === 0}
-            empty={<EmptyState title="No recent errors" hint="Nothing to review — good news." />}
+            empty={<EmptyState title="No recent errors" hint="Nothing to review ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â good news." />}
           />
         </Card>
       </div>

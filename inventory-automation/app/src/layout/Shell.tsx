@@ -94,22 +94,22 @@ export function Shell() {
           <select
             aria-label="Language"
             value={lang}
-            onChange={(event) => changeLang(event.target.value as Lang)}
-            style={{ width: '100%', marginBottom: 8, padding: '4px 6px', borderRadius: 6 }}
-          >
-            <option value="en">English</option>
-            <option value="hi">हिन्दी</option>
-            <option value="gu">ગુજરાતી</option>
-          </select>
-          <select
-            aria-label="Language"
-            value={lang}
-            onChange={(event) => changeLang(event.target.value as Lang)}
+            onChange={(event) => { changeLang(event.target.value as Lang); window.setTimeout(() => window.location.reload(), 50); }}
             style={{ width: '100%', marginBottom: 8, padding: '4px 6px', borderRadius: 6 }}
           >
             <option value="en">English</option>
             <option value="hi">à¤¹à¤¿à¤¨à¥à¤¦à¥€</option>
             <option value="gu">àª—à«àªœàª°àª¾àª¤à«€</option>
+          </select>
+          <select
+            aria-label="Language"
+            value={lang}
+            onChange={(event) => { changeLang(event.target.value as Lang); window.setTimeout(() => window.location.reload(), 50); }}
+            style={{ width: '100%', marginBottom: 8, padding: '4px 6px', borderRadius: 6 }}
+          >
+            <option value="en">English</option>
+            <option value="hi">Ã Â¤Â¹Ã Â¤Â¿Ã Â¤Â¨Ã Â¥ÂÃ Â¤Â¦Ã Â¥â‚¬</option>
+            <option value="gu">Ã Âªâ€”Ã Â«ÂÃ ÂªÅ“Ã ÂªÂ°Ã ÂªÂ¾Ã ÂªÂ¤Ã Â«â‚¬</option>
           </select>
           <Button
             variant="ghost"
@@ -126,7 +126,7 @@ export function Shell() {
       <div className="main">
         {isDemoMode() && (
           <div className="banner">
-            <FlaskConical size={14} /> Demo mode Ã¢â‚¬â€ sample data only. Sign out to exit.
+            <FlaskConical size={14} /> Demo mode ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â sample data only. Sign out to exit.
           </div>
         )}
         <header className="topbar">

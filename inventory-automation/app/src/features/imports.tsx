@@ -1,3 +1,4 @@
+import { translate } from '../lib/i18n';
 /* Imports: universal file/sheet import, multi-source jobs, conflicts,
    priority rules, and the consolidated source-data browser. */
 import { useMemo, useRef, useState } from 'react';
@@ -207,7 +208,7 @@ function UniversalImportTab() {
           }
         >
           <p className="hint" style={{ marginTop: 0 }}>
-            CSV, TSV, TXT, XLS, XLSX or PDF — up to 15&nbsp;MB / 50,000 rows. PDF extraction needs the
+            CSV, TSV, TXT, XLS, XLSX or PDF Ã¢â‚¬â€ up to 15&nbsp;MB / 50,000 rows. PDF extraction needs the
             Drive API advanced service enabled in the Apps Script project.
           </p>
           <Field label="File">
@@ -236,7 +237,7 @@ function UniversalImportTab() {
             Paste the sheet URL or ID. The sheet must be accessible to this Google account.
           </p>
           <Field label="Sheet URL or ID">
-            <Input value={sheetUrl} onChange={(e) => setSheetUrl(e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/…" />
+            <Input value={sheetUrl} onChange={(e) => setSheetUrl(e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/Ã¢â‚¬Â¦" />
           </Field>
           <div className="row" style={{ marginBottom: 12 }}>
             <Button
@@ -278,7 +279,7 @@ function UniversalImportTab() {
             <Badge tone="brand">{staged.format || 'Staged'}</Badge>
             <strong className={''}>{staged.fileName}</strong>
             <span className="muted tnum">
-              {staged.totalRows.toLocaleString()} rows × {staged.headers.length} cols
+              {staged.totalRows.toLocaleString()} rows Ãƒâ€” {staged.headers.length} cols
             </span>
           </div>
           <Button
@@ -318,7 +319,7 @@ function UniversalImportTab() {
               label: h,
               render: (r: string[]) => (
                 <span className="cell-clip" title={r[preview.headers.indexOf(h)]}>
-                  {r[preview.headers.indexOf(h)] || '—'}
+                  {r[preview.headers.indexOf(h)] || 'Ã¢â‚¬â€'}
                 </span>
               ),
             }))}
@@ -329,7 +330,7 @@ function UniversalImportTab() {
           />
         ) : (
           <div style={{ padding: 14 }}>
-            <EmptyState title="Loading preview…" />
+            <EmptyState title="Loading previewÃ¢â‚¬Â¦" />
           </div>
         )}
       </Card>
@@ -355,7 +356,7 @@ function UniversalImportTab() {
                         setMap((prev) => prev.map((x, idx) => (idx === i ? { ...x, target: e.target.value } : x)))
                       }
                     >
-                      <option value="">— skip —</option>
+                      <option value="">Ã¢â‚¬â€ skip Ã¢â‚¬â€</option>
                       {targetOptions.map((t) => (
                         <option key={t} value={t}>
                           {t}
@@ -419,8 +420,8 @@ function UniversalImportTab() {
                 {commitResult.dryRun ? 'Dry run' : 'Committed'}
               </Badge>
               <span className="tnum muted">
-                processed {commitResult.processed} · valid {commitResult.valid} · imported {commitResult.imported} ·
-                failed {commitResult.failed} · skipped {commitResult.skipped}
+                processed {commitResult.processed} Ã‚Â· valid {commitResult.valid} Ã‚Â· imported {commitResult.imported} Ã‚Â·
+                failed {commitResult.failed} Ã‚Â· skipped {commitResult.skipped}
               </span>
             </div>
             {commitResult.warnings.map((w, i) => (
@@ -515,7 +516,7 @@ function MultiSourceTab() {
         .map((s) => ({ type: s.type, name: s.name.trim(), sheetName: s.sheetName.trim(), sheetId: s.sheetId.trim() }));
       if (!list.length) throw new Error('Add at least one source with a name.');
       const norm = await api.multiValidate(list);
-      toast.ok(`Validation passed — ${norm.length} source(s) ready.`);
+      toast.ok(`Validation passed Ã¢â‚¬â€ ${norm.length} source(s) ready.`);
     } catch (err) {
       toast.error(errorMessage(err));
     } finally {
@@ -531,7 +532,7 @@ function MultiSourceTab() {
         .map((s) => ({ type: s.type, name: s.name.trim(), sheetName: s.sheetName.trim(), sheetId: s.sheetId.trim() }));
       if (!list.length) throw new Error('Add at least one source with a name.');
       const created = await api.multiCreate(list);
-      toast.info(`Import job ${created.jobId} created — running…`);
+      toast.info(`Import job ${created.jobId} created Ã¢â‚¬â€ runningÃ¢â‚¬Â¦`);
       const res = await api.multiRun(created.jobId);
       setJobResult(res);
       const status = String(res.status || '');
@@ -554,7 +555,7 @@ function MultiSourceTab() {
     <div className="stack">
       <Card
         title="Sources for this import"
-        actions={<span className="hint">One logical device per barcode · conflicts resolved by priority rules</span>}
+        actions={<span className="hint">One logical device per barcode Ã‚Â· conflicts resolved by priority rules</span>}
       >
         <div className="table-wrap">
           <table className="data">
@@ -654,11 +655,11 @@ function MultiSourceTab() {
         <Card title="Import result">
           <div className="row" style={{ gap: 14, flexWrap: 'wrap', marginBottom: 10 }}>
             <Badge tone={String(jobResult['status']) === 'FAILED' ? 'danger' : 'ok'}>
-              {String(jobResult['status'] ?? '—')}
+              {String(jobResult['status'] ?? 'Ã¢â‚¬â€')}
             </Badge>
             <span className="tnum muted">
-              job {String(jobResult['jobId'] ?? '')} · rows {String(jobResult['totalRows'] ?? 0)} · devices{' '}
-              {String(jobResult['devices'] ?? 0)} · conflicts {String(jobResult['conflicts'] ?? 0)}
+              job {String(jobResult['jobId'] ?? '')} Ã‚Â· rows {String(jobResult['totalRows'] ?? 0)} Ã‚Â· devices{' '}
+              {String(jobResult['devices'] ?? 0)} Ã‚Â· conflicts {String(jobResult['conflicts'] ?? 0)}
             </span>
           </div>
           {failed.length > 0 && (
@@ -671,7 +672,7 @@ function MultiSourceTab() {
             </div>
           )}
           <p className="hint" style={{ marginBottom: 0 }}>
-            Conflicts are listed in the “Conflicts” tab; field priorities in “Priority rules”.
+            Conflicts are listed in the Ã¢â‚¬Å“ConflictsÃ¢â‚¬Â tab; field priorities in Ã¢â‚¬Å“Priority rulesÃ¢â‚¬Â.
           </p>
         </Card>
       )}
@@ -705,7 +706,7 @@ function ConflictsTab() {
     label: h.replace(/_/g, ' '),
     render: (r) => (
       <span className="cell-clip" title={r[h]}>
-        {r[h] || '—'}
+        {r[h] || 'Ã¢â‚¬â€'}
       </span>
     ),
   }));
@@ -802,7 +803,7 @@ function PriorityTab() {
         actions={<span className="hint">Per field: which source wins, left to right</span>}
       >
         <p className="hint" style={{ marginTop: 0 }}>
-          Example: STATUS → QC_STOCK, TRC, INVENTORY, LOCATION, OTHER. Saving replaces the whole table.
+          Example: STATUS Ã¢â€ â€™ QC_STOCK, TRC, INVENTORY, LOCATION, OTHER. Saving replaces the whole table.
         </p>
         <div className="table-wrap">
           <table className="data">
@@ -873,7 +874,7 @@ function SourceDataTab() {
     label: h.replace(/_/g, ' '),
     render: (r) => (
       <span className="cell-clip" title={r[h]}>
-        {r[h] || '—'}
+        {r[h] || 'Ã¢â‚¬â€'}
       </span>
     ),
   }));
@@ -891,7 +892,7 @@ function SourceDataTab() {
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search…"
+              placeholder="SearchÃ¢â‚¬Â¦"
               style={{ width: 220 }}
               aria-label="Search source data"
             />
@@ -921,7 +922,7 @@ function SourceDataTab() {
             label: h.replace(/_/g, ' '),
             render: (r: Record<string, string>) => (
               <span className="cell-clip" title={r[h]}>
-                {r[h] || '—'}
+                {r[h] || 'Ã¢â‚¬â€'}
               </span>
             ),
           }))}
@@ -941,7 +942,7 @@ export function ImportsPage() {
   const [tab, setTab] = useState('universal');
   return (
     <div className="stack">
-      <PageHeader title="Imports" subtitle="Bring data in: files, Google Sheets, or multiple sources at once." />
+      <PageHeader title={translate('Imports')} subtitle="Bring data in: files, Google Sheets, or multiple sources at once." />
       <Tabs
         tabs={[
           { key: 'universal', label: 'Universal import' },

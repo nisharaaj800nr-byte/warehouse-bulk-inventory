@@ -48,7 +48,7 @@ const FILTER_COLUMNS: Record<string, string> = {
   SOURCE_TYPE: 'source_type'
 };
 
-const PUBLIC_ACTIONS = new Set(['health', 'auth.login', 'auth.logout', 'auth.bootstrap', 'auth.google']);
+const PUBLIC_ACTIONS = new Set(['health', 'auth.login', 'auth.logout', 'auth.bootstrap', 'auth.google', 'auth.googleConfig']);
 
 interface InventoryRow {
   id: number;
@@ -164,6 +164,13 @@ export function legacyRouter(db: Db, sessionTtlHours: number, dbPath: string = '
         };
       }
 
+      case 'auth.googleConfig': {
+        const clientRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('GOOGLE_CLIENT_ID') as
+          | { value: string }
+          | undefined;
+        const clientId = clientRow?.value ?? process.env.GOOGLE_CLIENT_ID ?? '';
+        return { enabled: clientId.length > 0, clientId };
+      }
       case 'auth.logout':
         if (typeof params.token === 'string' && params.token) revokeSession(db, params.token);
         return { revoked: true };
@@ -216,7 +223,12 @@ export function legacyRouter(db: Db, sessionTtlHours: number, dbPath: string = '
           .prepare('SELECT row_number, field, message FROM import_errors ORDER BY id DESC LIMIT 8')
           .all() as unknown as Array<{ row_number: number; field: string; message: string }>;
 
+        const byStatus = db.prepare("SELECT COALESCE(status, '(empty)') AS key, COUNT(*) AS count FROM inventory GROUP BY key ORDER BY count DESC LIMIT 8").all() as unknown as Array<{ key: string; count: number }>;
+        const byAgeBucket = db.prepare("SELECT COALESCE(age_bucket, '(empty)') AS key, COUNT(*) AS count FROM inventory GROUP BY key ORDER BY count DESC LIMIT 8").all() as unknown as Array<{ key: string; count: number }>;
+
         return {
+          byStatus: byStatus.map((row) => ({ key: row.key, count: Number(row.count) })),
+          byAgeBucket: byAgeBucket.map((row) => ({ key: row.key, count: Number(row.count) })),
           inventoryCount: total,
           headers: [...INVENTORY_HEADERS],
           recentRuns: runs.map((run) => [run.kind, run.status, String(run.rows_ok), String(run.rows_failed), run.created_at]),

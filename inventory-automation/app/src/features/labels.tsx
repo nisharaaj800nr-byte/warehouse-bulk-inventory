@@ -1,3 +1,4 @@
+import { translate } from '../lib/i18n';
 /* Label printing: CODE128 barcodes for shelf/bin labels. */
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -64,7 +65,7 @@ export function LabelsPage() {
   return (
     <div className="stack">
       <PageHeader
-        title="Labels"
+        title={translate('Labels')}
         subtitle={list.data ? `${items.length} labels ready to print` : 'Print barcode labels for bins and devices.'}
         actions={
           <Button icon={<Printer size={14} />} onClick={() => window.print()}>
@@ -113,10 +114,10 @@ export function LabelsPage() {
                 {item.barcode}
               </div>
               <div className="muted" style={{ fontSize: 11 }}>
-                {[item.brand, item.model].filter(Boolean).join(' · ')}
+                {[item.brand, item.model].filter(Boolean).join(' Ã‚Â· ')}
               </div>
               <div className="muted" style={{ fontSize: 11 }}>
-                {[item.location, item.bin].filter(Boolean).join(' · ')}
+                {[item.location, item.bin].filter(Boolean).join(' Ã‚Â· ')}
               </div>
             </div>
           ))}

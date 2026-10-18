@@ -10,7 +10,7 @@ function main(): void {
   const db = openDb(config.dbPath);
   const applied = migrate(db);
 
-  const app = createApp({ db, sessionTtlHours: config.sessionTtlHours });
+  const app = createApp({ db, sessionTtlHours: config.sessionTtlHours, dbPath: config.dbPath });
   const server = app.listen(config.port, config.host, () => {
     logger.info('server_started', {
       host: config.host,

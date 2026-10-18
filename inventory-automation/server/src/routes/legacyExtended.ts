@@ -10,6 +10,9 @@ import { upsertInventory } from '../services/importService.js';
 import { loadRules } from '../services/rulesEngine.js';
 import type { MappedRow } from '../services/rulesEngine.js';
 import { runBackup } from '../services/backup.js';
+import { bulkUpdate, type BulkPatch } from '../services/bulk.js';
+import { sendTestEmail } from '../services/mailer.js';
+import { toPdfBuffer, toXlsxBuffer } from '../services/reportExport.js';
 import { stageUpload } from '../services/staging.js';
 
 /**
@@ -602,7 +605,7 @@ export async function dispatchExtended(
     case 'auth.bootstrap': {
       const userCount = Number((db.prepare('SELECT COUNT(*) AS c FROM users').get() as { c: number }).c);
       if (userCount > 0) {
-        throw new ApiError(409, 'DUPLICATE', 'Setup already completed on this server ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â sign in instead');
+        throw new ApiError(409, 'DUPLICATE', 'Setup already completed on this server ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â sign in instead');
       }
 
       const bootstrapEmail = String(params.email ?? '').trim().toLowerCase();
@@ -641,6 +644,49 @@ export async function dispatchExtended(
       adminOnly();
       const result = await runBackup(db, dbPath);
       return { ok: true, ...result };
+    }
+    case 'inventory.bulkUpdate': {
+      writerOnly();
+      const bulkIds = Array.isArray(params.ids) ? (params.ids as unknown[]).map((value) => Number(value)) : [];
+      const bulkBarcodes = Array.isArray(params.barcodes) ? (params.barcodes as unknown[]).map((value) => String(value)) : [];
+      const incoming = (params.patch ?? {}) as Record<string, unknown>;
+      const fieldMap: Record<string, keyof BulkPatch> = {
+        STATUS: 'status',
+        STATUS_BUCKET: 'statusBucket',
+        LOCATION: 'location',
+        BIN_BUCKET: 'binBucket',
+        PRIORITY: 'priority',
+        status: 'status',
+        statusBucket: 'statusBucket',
+        location: 'location',
+        binBucket: 'binBucket',
+        priority: 'priority'
+      };
+      const patch: BulkPatch = {};
+      for (const [key, value] of Object.entries(incoming)) {
+        const target = fieldMap[key];
+        if (!target) continue;
+        patch[target] = value === null || value === undefined ? null : String(value);
+      }
+      const result = bulkUpdate(db, { ids: bulkIds, barcodes: bulkBarcodes }, patch);
+      return { ok: true, ...result };
+    }
+
+    case 'reports.exportExcel': {
+      const groupBy = String(params.groupBy ?? 'brand');
+      const buffer = toXlsxBuffer(db, groupBy, {});
+      return { fileName: 'inventory-' + groupBy + '.xlsx', base64: buffer.toString('base64'), bytes: buffer.length };
+    }
+
+    case 'reports.exportPdf': {
+      const pdfGroupBy = String(params.groupBy ?? 'brand');
+      const pdfBuffer = await toPdfBuffer(db, pdfGroupBy, {});
+      return { fileName: 'inventory-' + pdfGroupBy + '.pdf', base64: pdfBuffer.toString('base64'), bytes: pdfBuffer.length };
+    }
+    case 'email.test': {
+      adminOnly();
+      const mailResult = await sendTestEmail(db, params.to ? String(params.to) : undefined);
+      return { sentTo: mailResult.sentTo };
     }
     /* ---------------- settings ---------------- */
     case 'settings.get': {

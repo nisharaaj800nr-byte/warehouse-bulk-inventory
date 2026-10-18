@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
+  Tag,
   Upload,
 } from 'lucide-react';
 import type { Role } from '../lib/api';
@@ -38,6 +39,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/inventory', label: 'Inventory', icon: Boxes },
       { to: '/imports', label: 'Imports', icon: Upload },
+      { to: '/labels', label: 'Labels', icon: Tag },
       { to: '/reports', label: 'Reports', icon: FileText },
     ],
   },

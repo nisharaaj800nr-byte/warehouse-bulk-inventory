@@ -5,6 +5,7 @@ import { SetupPage } from '../features/setup';
 import { DashboardPage } from '../features/dashboard';
 import { InventoryPage } from '../features/inventory';
 import { ImportsPage } from '../features/imports';
+import { LabelsPage } from '../features/labels';
 import { ReportsPage } from '../features/reports';
 import { SourcesPage } from '../features/sources';
 import { MappingPage } from '../features/mapping';
@@ -23,7 +24,7 @@ export function Splash() {
   return (
     <div className="splash">
       <div className="splash-logo">BR</div>
-      <div>Loading portal�?�</div>
+      <div>Loading portalï¿½?ï¿½</div>
     </div>
   );
 }
@@ -91,6 +92,7 @@ export function AppRoutes() {
         <Route index element={<DashboardPage />} />
         <Route path="inventory" element={<InventoryPage />} />
         <Route path="imports" element={<ImportsPage />} />
+        <Route path="labels" element={<LabelsPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="sources" element={<SourcesPage />} />
         <Route path="mapping" element={<MappingPage />} />

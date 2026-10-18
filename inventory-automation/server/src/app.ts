@@ -8,6 +8,7 @@ import { logger } from './lib/logger.js';
 import { alertsRouter } from './routes/alerts.js';
 import { authRouter } from './routes/auth.js';
 import { healthRouter } from './routes/health.js';
+import { exportsRouter } from './routes/exports.js';
 import { importsRouter } from './routes/imports.js';
 import { insightsRouter } from './routes/insights.js';
 import { inventoryRouter } from './routes/inventory.js';
@@ -56,6 +57,7 @@ export function createApp({ db, sessionTtlHours, dbPath = ':memory:' }: AppOptio
   app.use('/api', rulesRouter(db));
   app.use('/api', importsRouter(db));
   app.use('/api', reportsRouter(db));
+  app.use('/api', exportsRouter(db));
   app.use('/api', alertsRouter(db));
   app.use('/api', insightsRouter(db));
   app.use('/api', inventoryRouter(db));

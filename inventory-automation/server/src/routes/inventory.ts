@@ -5,6 +5,7 @@ import { authContext, requireAuth, requireRole } from '../auth/middleware.js';
 import { writeAudit } from '../lib/audit.js';
 import { fail } from '../lib/errors.js';
 import { parseInput } from '../lib/validate.js';
+import { bulkUpdate } from '../services/bulk.js';
 
 const nullableText = (max: number) => z.string().trim().max(max).nullable().optional();
 
@@ -40,6 +41,25 @@ const updateSchema = z
   .strict()
   .refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' });
 
+const bulkSchema = z
+  .object({
+    ids: z.array(z.number().int().min(1)).max(5000).optional(),
+    barcodes: z.array(z.string().trim().min(1).max(64)).max(5000).optional(),
+    patch: z
+      .object({
+        status: nullableText(100),
+        statusBucket: nullableText(100),
+        location: nullableText(100),
+        binBucket: nullableText(100),
+        priority: nullableText(20)
+      })
+      .strict()
+  })
+  .strict()
+  .refine((value) => (value.ids?.length ?? 0) + (value.barcodes?.length ?? 0) > 0, {
+    message: 'ids or barcodes are required'
+  })
+  .refine((value) => Object.keys(value.patch).length > 0, { message: 'patch is required' });
 const listSchema = z
   .object({
     page: z.coerce.number().int().min(1).max(1000000).default(1),
@@ -267,6 +287,25 @@ export function inventoryRouter(db: Db): Router {
     }
   });
 
+  router.post('/inventory/bulk', auth, requireRole('ADMIN', 'OWNER'), (req, res, next) => {
+    try {
+      const { user } = authContext(req);
+      const body = parseInput(bulkSchema, req.body);
+      const result = bulkUpdate(db, { ids: body.ids, barcodes: body.barcodes }, body.patch);
+
+      writeAudit(db, {
+        actorEmail: user.email,
+        action: 'INVENTORY_BULK_UPDATED',
+        entity: 'inventory',
+        details: { ...result, fields: Object.keys(body.patch) },
+        ip: req.ip
+      });
+
+      res.status(200).json({ ok: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  });
   router.put('/inventory/:id', auth, requireRole('ADMIN', 'OWNER'), (req, res, next) => {
     try {
       const { user } = authContext(req);

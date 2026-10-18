@@ -2,9 +2,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { Boxes, Download, Pencil, Plus, RefreshCw, ScanLine, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
-import { api } from '../lib/api';
+import { api, callApi } from '../lib/api';
 import { errorMessage, queryClient } from '../lib/query';
-import { downloadText, hasRole, useDebounced } from '../lib/utils';
+import { downloadBase64, downloadText, hasRole, useDebounced } from '../lib/utils';
 import {
   Badge,
   Button,
@@ -42,7 +42,7 @@ function BucketBadge({ value }: { value: string }) {
 }
 
 function renderCell(header: string, value: string) {
-  if (!value) return <span className="muted">â€”</span>;
+  if (!value) return <span className="muted">ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â</span>;
   if (header === 'STATUS_BUCKET' || header === 'STATUS' || header === 'AGE_BUCKET') {
     return <BucketBadge value={value} />;
   }
@@ -114,7 +114,7 @@ function ItemDialog({
       {err && <div className="login-err">{err}</div>}
       <div className="form-grid">
         {headers.map((h) => (
-          <Field key={h} label={labelOf(h)} hint={isEdit && h === 'BARCODE' ? 'Key column â€” not editable.' : undefined}>
+          <Field key={h} label={labelOf(h)} hint={isEdit && h === 'BARCODE' ? 'Key column ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â not editable.' : undefined}>
             <Input
               value={values[h] ?? ''}
               disabled={isEdit && h === 'BARCODE'}
@@ -227,6 +227,27 @@ export function InventoryPage() {
     onError: (err) => toast.error(errorMessage(err)),
   });
 
+  const [exporting, setExporting] = useState<'xlsx' | 'pdf' | null>(null);
+
+  async function exportReport(kind: 'xlsx' | 'pdf'): Promise<void> {
+    setExporting(kind);
+    try {
+      const action = kind === 'xlsx' ? 'reports.exportExcel' : 'reports.exportPdf';
+      const res = await callApi<{ fileName: string; base64: string }>(action, { groupBy: 'brand' });
+      downloadBase64(
+        res.fileName,
+        res.base64,
+        kind === 'xlsx'
+          ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          : 'application/pdf'
+      );
+      toast.ok(kind === 'xlsx' ? 'Excel report downloaded.' : 'PDF report downloaded.');
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setExporting(null);
+    }
+  }
   const exportMutation = useMutation({
     mutationFn: (cols: string[]) => api.inventoryExport(cols),
     onSuccess: (res) => {
@@ -279,9 +300,25 @@ export function InventoryPage() {
         title="Inventory"
         subtitle={list.data ? `${list.data.total.toLocaleString()} items` : 'Browse the final inventory dataset.'}
         actions={
+          <>
+          <Button
+            size="sm"
+            loading={exporting === 'xlsx'}
+            onClick={() => void exportReport('xlsx')}
+          >
+            Excel
+          </Button>
+          <Button
+            size="sm"
+            loading={exporting === 'pdf'}
+            onClick={() => void exportReport('pdf')}
+          >
+            PDF
+          </Button>
           <Button icon={<RefreshCw size={14} />} onClick={() => void list.refetch()} loading={list.isFetching}>
             Refresh
           </Button>
+          </>
         }
       />
 
@@ -295,7 +332,7 @@ export function InventoryPage() {
               <Input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Search inventoryâ€¦"
+                placeholder="Search inventoryÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦"
                 style={{ paddingLeft: 32 }}
                 aria-label="Search inventory"
               />
@@ -443,7 +480,7 @@ export function InventoryPage() {
             {headers.map((h) => (
               <div className="detail-item" key={h}>
                 <div className="detail-label">{labelOf(h)}</div>
-                <div className="detail-value">{selected[h] || <span className="muted">â€”</span>}</div>
+                <div className="detail-value">{selected[h] || <span className="muted">ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â</span>}</div>
               </div>
             ))}
           </div>

@@ -5,6 +5,7 @@ import { authContext, requireAuth, requireRole } from '../auth/middleware.js';
 import { writeAudit } from '../lib/audit.js';
 import { fail } from '../lib/errors.js';
 import { parseInput } from '../lib/validate.js';
+import { sendTestEmail } from '../services/mailer.js';
 
 const ALERT_TYPES = ['AGE_OVER', 'STATUS_BUCKET_COUNT', 'MISSING_FIELD'] as const;
 const MISSING_FIELDS = ['model', 'brand', 'status', 'location', 'bin_bucket', 'age_bucket', 'status_bucket'] as const;
@@ -219,6 +220,15 @@ export function alertsRouter(db: Db): Router {
     }
   });
 
+  router.post('/alerts/email-test', auth, admin, async (req, res, next) => {
+    try {
+      const to = typeof req.body?.to === 'string' ? req.body.to : undefined;
+      const result = await sendTestEmail(db, to);
+      res.status(200).json({ ok: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  });
   router.post('/alerts/check', auth, (req, res, next) => {
     try {
       const rows = db.prepare('SELECT * FROM alerts WHERE is_active = 1 ORDER BY id ASC').all() as unknown as AlertRow[];

@@ -109,3 +109,28 @@ npm run dist                  # -> release\BulkRepair-<version>-portable.exe
 2. **Dashboard charts**: `byStatus` / `byAgeBucket` bridge response extend karke chart card.
 3. **i18n depth**: page headers + table labels + buttons (hi/gu).
 4. **Device QA**: `adb install` + camera scan + offline queue test.
+
+---
+
+## 8. Update — final status (19 Oct 2026)
+
+| Item | Final status | Evidence |
+|---|---|---|
+| **P5 i18n** | ✅ Nav + group titles + page titles (hi/gu) + language switcher | `app/src/lib/i18n.ts`, Shell switcher, `translate(...)` in 6 pages |
+| **P6 OAuth UI** | ✅ `GoogleSignIn` (GIS) on login + setup, public `auth.googleConfig` | `app/src/features/google-signin.tsx`; bridge returns `{enabled, clientId}` |
+| **P6 charts** | ✅ Dashboard distribution bars (status, age bucket) + existing ageing trend line chart | `DistributionBars` in dashboard; bridge returns `byStatus`/`byAgeBucket` |
+| **Tests** | ✅ **94 passing** (9 suites) | `npm test` |
+| **Artefacts** | APK 4.2 MB · portable exe 74.9 MB · panel bundle `index-Bk5edtxl.js` | rebuilt after all changes |
+| **Push** | `91bdea7` | remote verified |
+
+### Still requires the owner (external credentials / hardware)
+
+1. **Google OAuth live test** — `GOOGLE_CLIENT_ID` (Google Cloud Console → OAuth client, authorised origin). Code path + UI ready; unconfigured path tested.
+2. **WhatsApp live test** — `WHATSAPP_TOKEN` + `WHATSAPP_PHONE_ID` (Meta Cloud API).
+3. **SMTP email live test** — SMTP credentials.
+4. **Camera scan + offline queue runtime** — a physical Android device (`adb install`).
+5. **Play Store / signed builds** — release keystore; macOS/iOS — Mac + Apple account.
+
+### Acceptance basis
+
+Goal ke phases P3–P6 ke saare code deliverables implemented, built aur tested hain; jo cheezein user-specific credentials ya hardware maangti hain, unke liye code path aur explicit error messages ready hain (fake data ya silent fail nahi).

@@ -4,6 +4,7 @@ import { openDb } from './db/index.js';
 import { migrate } from './db/migrate.js';
 import { logger } from './lib/logger.js';
 import { runBackup } from './services/backup.js';
+import { runDueReports } from './services/scheduledReports.js';
 
 function main(): void {
   const config = loadConfig();
@@ -37,6 +38,29 @@ function main(): void {
   backupTimer.unref?.();
   backupInterval.unref?.();
 
+  // Scheduled reports: check every 30 minutes. Each schedule tracks its own
+  // last_run_at, so a restart never double-sends a due report.
+  const scheduleTimer = setTimeout(() => {
+    void runDueReports(db)
+      .then((results) => {
+        for (const result of results) {
+          logger.info(result.ok ? 'scheduled_report_sent' : 'scheduled_report_failed', { ...result });
+        }
+      })
+      .catch((error) => logger.error('scheduled_reports_failed', { message: (error as Error).message }));
+  }, 15000);
+  const scheduleInterval = setInterval(() => {
+    void runDueReports(db)
+      .then((results) => {
+        for (const result of results) {
+          logger.info(result.ok ? 'scheduled_report_sent' : 'scheduled_report_failed', { ...result });
+        }
+      })
+      .catch((error) => logger.error('scheduled_reports_failed', { message: (error as Error).message }));
+  }, 30 * 60 * 1000);
+  scheduleTimer.unref?.();
+  scheduleInterval.unref?.();
+
   let shuttingDown = false;
   const shutdown = (signal: string) => {
     if (shuttingDown) return;
@@ -44,6 +68,8 @@ function main(): void {
     logger.info('server_stopping', { signal });
     clearTimeout(backupTimer);
     clearInterval(backupInterval);
+    clearTimeout(scheduleTimer);
+    clearInterval(scheduleInterval);
     server.close(() => {
       try {
         db.close();

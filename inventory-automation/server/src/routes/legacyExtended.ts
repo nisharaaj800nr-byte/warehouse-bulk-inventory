@@ -16,6 +16,13 @@ import { sendWhatsAppTest } from '../services/whatsapp.js';
 import { authenticateWithGoogle } from '../services/googleAuth.js';
 import { toPdfBuffer, toXlsxBuffer } from '../services/reportExport.js';
 import { stageUpload } from '../services/staging.js';
+import {
+  runDueReports,
+  runScheduledReport,
+  type Frequency,
+  type ReportFormat,
+  type ScheduledReportRow
+} from '../services/scheduledReports.js';
 
 /**
  * Second half of the panel compatibility bridge: everything that writes
@@ -67,6 +74,21 @@ function loadStagedFile(db: Db, staging: string): StagedFileRow {
   const row = db.prepare('SELECT * FROM import_files WHERE id = ?').get(staging) as StagedFileRow | undefined;
   if (!row) throw new ApiError(404, 'NOT_FOUND', 'Uploaded file was not found or already expired');
   return row;
+}
+
+function toScheduled(row: ScheduledReportRow) {
+  return {
+    id: Number(row.id),
+    name: row.name,
+    groupBy: row.group_by,
+    filters: row.filters_json ? JSON.parse(row.filters_json) : {},
+    frequency: row.frequency,
+    format: row.format,
+    recipients: row.recipients,
+    active: Number(row.is_active) === 1,
+    lastRunAt: row.last_run_at ?? '',
+    createdAt: row.created_at
+  };
 }
 
 export async function dispatchExtended(
@@ -774,6 +796,110 @@ export async function dispatchExtended(
         groupBy,
         groups: groups.map((group) => ({ key: group.key, count: Number(group.count) }))
       };
+    }
+
+    /* ---------------- scheduled reports ---------------- */
+    case 'scheduled.list': {
+      if (!role || !['ADMIN', 'OWNER', 'MANAGER'].includes(role)) {
+        throw new ApiError(403, 'FORBIDDEN', 'Manager role required');
+      }
+      const rows = db
+        .prepare('SELECT * FROM scheduled_reports ORDER BY name ASC')
+        .all() as unknown as ScheduledReportRow[];
+      return rows.map(toScheduled);
+    }
+
+    case 'scheduled.save': {
+      adminOnly();
+      const id = params.id === undefined || params.id === '' ? 0 : num(params.id, 0);
+      const name = String(params.name ?? '').trim();
+      const groupBy = String(params.groupBy ?? 'status').trim();
+      const frequency = String(params.frequency ?? 'WEEKLY').toUpperCase() as Frequency;
+      const format = String(params.format ?? 'PDF').toUpperCase() as ReportFormat;
+      const recipients = String(params.recipients ?? '').trim();
+      const active = bool(params.active, true);
+
+      if (!name) throw new ApiError(400, 'BAD_REQUEST', 'name is required');
+      if (!['status', 'brand', 'age_bucket', 'status_bucket', 'location', 'bin_bucket', 'model'].includes(groupBy)) {
+        throw new ApiError(400, 'BAD_REQUEST', `Unknown groupBy ${groupBy}`);
+      }
+      if (!['DAILY', 'WEEKLY', 'MONTHLY'].includes(frequency)) {
+        throw new ApiError(400, 'BAD_REQUEST', 'frequency must be DAILY, WEEKLY or MONTHLY');
+      }
+      if (!['PDF', 'XLSX'].includes(format)) {
+        throw new ApiError(400, 'BAD_REQUEST', 'format must be PDF or XLSX');
+      }
+      if (!recipients) throw new ApiError(400, 'BAD_REQUEST', 'recipients is required');
+
+      const filters = params.filters && typeof params.filters === 'object' ? params.filters : {};
+      const now = new Date().toISOString();
+
+      if (id > 0) {
+        const existing = db.prepare('SELECT id FROM scheduled_reports WHERE id = ?').get(id);
+        if (!existing) throw new ApiError(404, 'NOT_FOUND', `Scheduled report ${id} not found`);
+        db.prepare(
+          `UPDATE scheduled_reports
+              SET name = ?, group_by = ?, filters_json = ?, frequency = ?, format = ?, recipients = ?,
+                  is_active = ?, updated_at = ?
+            WHERE id = ?`
+        ).run(name, groupBy, JSON.stringify(filters), frequency, format, recipients, active ? 1 : 0, now, id);
+        writeAudit(db, { actorEmail: email, action: 'SCHEDULE_UPDATED', entity: 'scheduled_report', entityId: id, ip });
+        return { saved: true, id };
+      }
+
+      const result = db
+        .prepare(
+          `INSERT INTO scheduled_reports
+             (name, group_by, filters_json, frequency, format, recipients, is_active, last_run_at, created_by, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)`
+        )
+        .run(name, groupBy, JSON.stringify(filters), frequency, format, recipients, active ? 1 : 0, email, now, now);
+      const newId = Number(result.lastInsertRowid);
+      writeAudit(db, {
+        actorEmail: email,
+        action: 'SCHEDULE_CREATED',
+        entity: 'scheduled_report',
+        entityId: newId,
+        details: { name, frequency, format },
+        ip
+      });
+      return { saved: true, id: newId };
+    }
+
+    case 'scheduled.delete': {
+      adminOnly();
+      const id = num(params.id, 0);
+      if (!id) throw new ApiError(400, 'BAD_REQUEST', 'id is required');
+      const result = db.prepare('DELETE FROM scheduled_reports WHERE id = ?').run(id);
+      if (Number(result.changes) === 0) throw new ApiError(404, 'NOT_FOUND', `Scheduled report ${id} not found`);
+      writeAudit(db, { actorEmail: email, action: 'SCHEDULE_DELETED', entity: 'scheduled_report', entityId: id, ip });
+      return { deleted: true };
+    }
+
+    case 'scheduled.run': {
+      adminOnly();
+      const id = num(params.id, 0);
+      if (!id) throw new ApiError(400, 'BAD_REQUEST', 'id is required');
+      const row = db.prepare('SELECT * FROM scheduled_reports WHERE id = ?').get(id) as
+        | ScheduledReportRow
+        | undefined;
+      if (!row) throw new ApiError(404, 'NOT_FOUND', `Scheduled report ${id} not found`);
+      const result = await runScheduledReport(db, row);
+      writeAudit(db, {
+        actorEmail: email,
+        action: 'SCHEDULE_RUN',
+        entity: 'scheduled_report',
+        entityId: id,
+        details: { sentTo: result.sentTo, bytes: result.bytes },
+        ip
+      });
+      return { ok: true, ...result };
+    }
+
+    case 'scheduled.check': {
+      adminOnly();
+      const results = await runDueReports(db);
+      return { ran: results.length, results };
     }
 
     default:

@@ -333,6 +333,22 @@ export interface ImportCommitResult {
   errorSample: { row: number; errors: string[] }[];
 }
 
+export type ScheduleFrequency = 'DAILY' | 'WEEKLY' | 'MONTHLY';
+export type ScheduleFormat = 'PDF' | 'XLSX';
+
+export interface ScheduledReport {
+  id: number;
+  name: string;
+  groupBy: string;
+  filters: Record<string, string>;
+  frequency: ScheduleFrequency;
+  format: ScheduleFormat;
+  recipients: string;
+  active: boolean;
+  lastRunAt: string;
+  createdAt: string;
+}
+
 export interface StockMovement {
   id: number;
   at: string;
@@ -417,6 +433,14 @@ export const api = {
   alertSave: (params: Record<string, unknown>) => callApi<{ saved: string }>('alerts.save', params),
   alertDelete: (name: string) => callApi<{ deleted: string }>('alerts.delete', { name }),
   alertsCheck: () => callApi<{ triggered: Row[]; total: number }>('alerts.check'),
+
+  scheduledList: () => callApi<ScheduledReport[]>('scheduled.list'),
+  scheduledSave: (params: Record<string, unknown>) =>
+    callApi<{ saved: boolean; id: number }>('scheduled.save', params),
+  scheduledDelete: (id: number) => callApi<{ deleted: boolean }>('scheduled.delete', { id }),
+  scheduledRun: (id: number) =>
+    callApi<{ ok: boolean; sentTo: string; format: ScheduleFormat; bytes: number }>('scheduled.run', { id }),
+  scheduledCheck: () => callApi<{ ran: number; results: unknown[] }>('scheduled.check'),
 
   /* Users & security */
   authUsers: () =>

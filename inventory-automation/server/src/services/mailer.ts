@@ -41,6 +41,54 @@ export function mailSettings(db: Db): MailSettings | null {
  * Throws a clear validation error when email is not configured, so the UI can
  * show an actionable message instead of a generic failure.
  */
+function createTransport(settings: MailSettings) {
+  return nodemailer.createTransport({
+    host: settings.host,
+    port: settings.port,
+    secure: settings.port === 465,
+    auth: settings.user ? { user: settings.user, pass: settings.pass } : undefined
+  });
+}
+
+export interface MailAttachment {
+  filename: string;
+  content: Buffer;
+  contentType?: string;
+}
+
+export async function sendMailWithAttachment(
+  db: Db,
+  options: { to: string; subject: string; text: string; attachment?: MailAttachment }
+): Promise<void> {
+  const settings = mailSettings(db);
+  if (!settings) {
+    throw new ApiError(
+      400,
+      'VALIDATION_ERROR',
+      'Email is not configured. Settings me SMTP_HOST, SMTP_FROM aur SMTP credentials bharo.'
+    );
+  }
+
+  const to = options.to.trim();
+  if (!to) throw new ApiError(400, 'VALIDATION_ERROR', 'No recipient configured.');
+
+  await createTransport(settings).sendMail({
+    from: settings.from,
+    to,
+    subject: options.subject,
+    text: options.text,
+    attachments: options.attachment
+      ? [
+          {
+            filename: options.attachment.filename,
+            content: options.attachment.content,
+            contentType: options.attachment.contentType
+          }
+        ]
+      : undefined
+  });
+}
+
 export async function sendTestEmail(db: Db, overrideTo?: string): Promise<{ sentTo: string }> {
   const settings = mailSettings(db);
   if (!settings) {

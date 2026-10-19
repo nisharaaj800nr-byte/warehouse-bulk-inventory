@@ -311,5 +311,27 @@ CREATE INDEX idx_import_snapshots_barcode ON import_snapshots(barcode);
 
 ALTER TABLE import_jobs ADD COLUMN rolled_back_at TEXT;
 `
+    },
+  {
+    version: 6,
+    name: 'scheduled_reports',
+    sql: `
+CREATE TABLE scheduled_reports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  group_by TEXT NOT NULL,
+  filters_json TEXT,
+  frequency TEXT NOT NULL CHECK (frequency IN ('DAILY','WEEKLY','MONTHLY')),
+  format TEXT NOT NULL CHECK (format IN ('PDF','XLSX')),
+  recipients TEXT NOT NULL,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  last_run_at TEXT,
+  created_by TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX idx_scheduled_active ON scheduled_reports(is_active);
+`
   }
 ];

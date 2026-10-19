@@ -13,6 +13,7 @@ import { RulesPage } from '../features/rules';
 import { AlertsPage } from '../features/alerts';
 import { UsersPage } from '../features/users';
 import { SessionsPage } from '../features/sessions';
+import { ScheduledPage } from '../features/scheduled';
 import { ActivityPage } from '../features/activity';
 import { SettingsPage } from '../features/settings';
 import { AssistantPage } from '../features/assistant';
@@ -95,6 +96,14 @@ export function AppRoutes() {
         <Route path="imports" element={<ImportsPage />} />
         <Route path="labels" element={<LabelsPage />} />
         <Route path="reports" element={<ReportsPage />} />
+        <Route
+          path="scheduled"
+          element={
+            <RequireRole min="MANAGER">
+              <ScheduledPage />
+            </RequireRole>
+          }
+        />
         <Route path="sources" element={<SourcesPage />} />
         <Route path="mapping" element={<MappingPage />} />
         <Route path="rules" element={<RulesPage />} />

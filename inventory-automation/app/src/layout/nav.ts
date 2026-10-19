@@ -3,6 +3,7 @@ import {
   ArrowRightLeft,
   Bell,
   Boxes,
+  Clock,
   Database,
   FileText,
   History,
@@ -42,6 +43,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/imports', label: 'Imports', icon: Upload },
       { to: '/labels', label: 'Labels', icon: Tag },
       { to: '/reports', label: 'Reports', icon: FileText },
+      { to: '/scheduled', label: 'Scheduled reports', icon: Clock, min: 'MANAGER' },
     ],
   },
   {

@@ -41,3 +41,20 @@ export async function verifyPassword(password: string, stored: string): Promise<
   if (actual.length !== expected.length) return false;
   return timingSafeEqual(actual, expected);
 }
+
+export const PASSWORD_MIN_LENGTH = 10;
+
+/**
+ * Central password policy for every creation, reset and change path.
+ * Returns a human-readable message, or null when the password is acceptable.
+ */
+export function validatePasswordPolicy(password: string): string | null {
+  if (password.length < PASSWORD_MIN_LENGTH) {
+    return `Password must be at least ${PASSWORD_MIN_LENGTH} characters`;
+  }
+  if (password.length > 200) return 'Password is too long';
+  if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+    return 'Password must contain both letters and numbers';
+  }
+  return null;
+}

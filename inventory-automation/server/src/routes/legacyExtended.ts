@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Db } from '../db/index.js';
-import { hashPassword } from '../auth/password.js';
+import { hashPassword, validatePasswordPolicy } from '../auth/password.js';
 import { authenticate } from '../services/authService.js';
 import { ROLES, type Role } from '../auth/tokens.js';
 import { ApiError } from '../lib/errors.js';
@@ -599,7 +599,8 @@ export async function dispatchExtended(
           existing.id
         );
         if (password) {
-          if (password.length < 8) throw new ApiError(400, 'BAD_REQUEST', 'Password must be at least 8 characters');
+          const policyError = validatePasswordPolicy(password);
+          if (policyError) throw new ApiError(400, 'BAD_REQUEST', policyError);
           db.prepare('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?').run(
             await hashPassword(password),
             now,
@@ -612,7 +613,8 @@ export async function dispatchExtended(
         return { saved: true, updated: true, passwordSet: password.length > 0 };
       }
 
-      if (password.length < 8) throw new ApiError(400, 'BAD_REQUEST', 'A password of at least 8 characters is required');
+      const createPolicyError = validatePasswordPolicy(password);
+      if (createPolicyError) throw new ApiError(400, 'BAD_REQUEST', createPolicyError);
       db.prepare(
         `INSERT INTO users (email, password_hash, role, is_active, failed_attempts, locked_until, last_login_at, created_at, updated_at)
          VALUES (?, ?, ?, ?, 0, NULL, NULL, ?, ?)`
@@ -625,7 +627,8 @@ export async function dispatchExtended(
       adminOnly();
       const userEmail = String(params.email ?? '').trim().toLowerCase();
       const newPassword = String(params.newPassword ?? '');
-      if (!userEmail || newPassword.length < 8) {
+      const resetPolicyError = newPassword ? validatePasswordPolicy(newPassword) : 'A new password is required';
+      if (!userEmail || resetPolicyError) {
         throw new ApiError(400, 'BAD_REQUEST', 'email and a password of at least 8 characters are required');
       }
       const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(userEmail) as { id: number } | undefined;
@@ -654,7 +657,8 @@ export async function dispatchExtended(
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(bootstrapEmail)) {
         throw new ApiError(400, 'BAD_REQUEST', 'Enter a valid email address');
       }
-      if (bootstrapPassword.length < 8) {
+      const bootstrapPolicyError = validatePasswordPolicy(bootstrapPassword);
+      if (bootstrapPolicyError) {
         throw new ApiError(400, 'BAD_REQUEST', 'Password must be at least 8 characters');
       }
 

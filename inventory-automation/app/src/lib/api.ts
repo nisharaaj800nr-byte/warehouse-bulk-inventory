@@ -376,8 +376,13 @@ export interface LoginEvent {
 
 export const api = {
   health: () => callApi<Record<string, unknown>>('health'),
-  login: (email: string, password: string, rememberMe: boolean) =>
-    callApi<LoginResult>('auth.login', { email, password, rememberMe }),
+  login: (email: string, password: string, rememberMe: boolean, code?: string) =>
+    callApi<LoginResult>('auth.login', { email, password, rememberMe, ...(code ? { code } : {}) }),
+  totpStatus: () => callApi<{ enabled: boolean; recoveryCodesLeft: number }>('auth.totpStatus'),
+  totpSetup: () => callApi<{ secret: string; otpauthUri: string }>('auth.totpSetup'),
+  totpEnable: (code: string) => callApi<{ enabled: boolean; recoveryCodes: string[] }>('auth.totpEnable', { code }),
+  totpDisable: (password: string, code: string) =>
+    callApi<{ enabled: boolean }>('auth.totpDisable', { password, code }),
   bootstrapOwner: (email: string, password: string) =>
     callApi<LoginResult>('auth.bootstrap', { email, password }),
   logout: () => callApi<{ revoked: boolean }>('auth.logout', { token: getToken() }),

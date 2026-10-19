@@ -1,7 +1,7 @@
 import { loadConfig } from '../config.js';
 import { openDb } from '../db/index.js';
 import { migrate } from '../db/migrate.js';
-import { hashPassword } from '../auth/password.js';
+import { hashPassword, validatePasswordPolicy } from '../auth/password.js';
 import { ROLES, type Role } from '../auth/tokens.js';
 import { writeAudit } from '../lib/audit.js';
 
@@ -22,7 +22,12 @@ async function main(): Promise<void> {
     console.error(`Invalid email: ${emailArg}`);
     process.exit(1);
   }
-  if (passwordArg.length < 8 || passwordArg.length > 200) {
+  const policyError = validatePasswordPolicy(passwordArg);
+  if (policyError) {
+    console.error(policyError);
+    process.exit(1);
+  }
+  if (passwordArg.length > 200) {
     console.error('Password must be between 8 and 200 characters');
     process.exit(1);
   }

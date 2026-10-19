@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import type { Db } from '../db/index.js';
-import { hashPassword, verifyPassword } from '../auth/password.js';
+import { hashPassword, validatePasswordPolicy, verifyPassword } from '../auth/password.js';
 import { authenticate } from '../services/authService.js';
 import { authContext, requireAuth } from '../auth/middleware.js';
 import { issueSession, resolveSession, revokeOtherSessions, revokeSession, ROLES, type Role } from '../auth/tokens.js';
@@ -13,11 +13,24 @@ const RATE_LIMIT_MAX = 10;
 const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 
 const loginSchema = z
-  .object({ email: z.string().trim().email().max(320), password: z.string().min(1).max(200) })
+  .object({
+    email: z.string().trim().email().max(320),
+    password: z.string().min(1).max(200),
+    code: z.string().trim().max(20).optional()
+  })
   .strict();
 
 const changePasswordSchema = z
-  .object({ currentPassword: z.string().min(1).max(200), newPassword: z.string().min(8).max(200) })
+  .object({
+    currentPassword: z.string().min(1).max(200),
+    newPassword: z
+      .string()
+      .min(10)
+      .max(200)
+      .refine((value) => validatePasswordPolicy(value) === null, {
+        message: 'Password must be at least 10 characters and contain letters and numbers'
+      })
+  })
   .strict();
 
 interface UserRow {
@@ -61,7 +74,7 @@ export function authRouter(db: Db, ttlHours: number): Router {
       const ip = req.ip ?? 'unknown';
       enforceRateLimit(`${ip}:${body.email.toLowerCase()}`);
 
-      const { token, expiresAt, user } = await authenticate(db, { email: body.email, password: body.password, ip }, ttlHours);
+      const { token, expiresAt, user } = await authenticate(db, { email: body.email, password: body.password, code: body.code, ip }, ttlHours);
 
       res.status(200).json({
         ok: true,
@@ -116,6 +129,9 @@ export function authRouter(db: Db, ttlHours: number): Router {
         });
         throw fail.unauthorized('Current password is incorrect');
       }
+
+      const policyError = validatePasswordPolicy(body.newPassword);
+      if (policyError) throw fail.validation({ password: policyError }, policyError);
 
       const newHash = await hashPassword(body.newPassword);
       db.prepare('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?').run(

@@ -40,7 +40,7 @@ interface SessionState {
 interface AuthContextValue {
   status: 'loading' | 'anon' | 'authed';
   session: SessionState | null;
-  login: (email: string, password: string, rememberMe: boolean) => Promise<void>;
+  login: (email: string, password: string, rememberMe: boolean, code?: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -92,12 +92,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(null);
       setStatus('anon');
       queryClient.clear();
-      toast.warn('Session expired â€” please sign in again.');
+      toast.warn('Session expired — please sign in again.');
     });
   }, [toast]);
 
-  const login = useCallback(async (email: string, password: string, rememberMe: boolean) => {
-    const res = await api.login(email, password, rememberMe);
+  const login = useCallback(async (email: string, password: string, rememberMe: boolean, code?: string) => {
+    const res = await api.login(email, password, rememberMe, code);
     if (res.token) setToken(res.token);
     setSession({ email: res.email, role: res.role, expiresAt: res.expiresAt ?? null, legacy: false });
     setStatus('authed');
@@ -124,7 +124,7 @@ function SplashInline() {
     <div className="splash">
       <div className="splash-logo">BR</div>
       <div className="row" style={{ gap: 8 }}>
-        <Spinner size={14} /> Loadingâ€¦
+        <Spinner size={14} /> Loading…
       </div>
     </div>
   );
@@ -141,6 +141,8 @@ export function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [demoBusy, setDemoBusy] = useState(false);
   const [error, setError] = useState('');
+  const [needsTotp, setNeedsTotp] = useState(false);
+  const [totpCode, setTotpCode] = useState('');
   const [showConn, setShowConn] = useState(false);
   const [url, setUrl] = useState(getApiUrl());
 
@@ -155,10 +157,18 @@ export function LoginPage() {
     setError('');
     setBusy(true);
     try {
-      await login(email.trim(), password, remember);
+      await login(email.trim(), password, remember, needsTotp ? totpCode.trim() : undefined);
       navigate('/', { replace: true });
     } catch (err) {
-      setError(errorMessage(err));
+      if (err instanceof ApiError && err.code === 'TOTP_REQUIRED') {
+        setNeedsTotp(true);
+        setError('Enter the 6-digit code from your authenticator app.');
+      } else if (err instanceof ApiError && err.code === 'TOTP_INVALID') {
+        setNeedsTotp(true);
+        setError('That code is not valid. Try the current code or a recovery code.');
+      } else {
+        setError(errorMessage(err));
+      }
     } finally {
       setBusy(false);
     }
@@ -191,9 +201,9 @@ export function LoginPage() {
       <div className="login-brand">
         <div className="login-brand-inner">
           <div className="login-logo">BR</div>
-          <div className="login-big">Bulk Repair â€” Inventory Portal</div>
+          <div className="login-big">Bulk Repair — Inventory Portal</div>
           <p className="login-tagline">
-            Run the daily pipeline, browse inventory, and keep every record audit-ready â€” one place, from anywhere.
+            Run the daily pipeline, browse inventory, and keep every record audit-ready — one place, from anywhere.
           </p>
           <ul className="login-features">
             <li>
@@ -239,11 +249,23 @@ export function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                placeholder="••••••••"
                 autoComplete="current-password"
                 required
               />
             </Field>
+            {needsTotp && (
+              <Field label="Authenticator code" hint="6-digit code, or one of your recovery codes.">
+                <Input
+                  value={totpCode}
+                  onChange={(e) => setTotpCode(e.target.value)}
+                  placeholder="123456"
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
+                  required
+                />
+              </Field>
+            )}
             <div className="spread" style={{ marginBottom: 16 }}>
               <label className="checkbox">
                 <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /> Keep me
@@ -251,13 +273,13 @@ export function LoginPage() {
               </label>
             </div>
             <Button variant="primary" size="lg" type="submit" loading={busy} style={{ width: '100%' }}>
-              {busy ? 'Signing inâ€¦' : 'Sign in'}
+              {busy ? 'Signing in…' : 'Sign in'}
             </Button>
           </form>
         <GoogleSignIn onError={setError} />
           <div className="login-alt">
             <button type="button" onClick={startDemo} disabled={demoBusy}>
-              {demoBusy ? 'Loading demoâ€¦' : 'Explore demo (sample data)'}
+              {demoBusy ? 'Loading demo…' : 'Explore demo (sample data)'}
             </button>
           </div>
           {getApiMode() === 'http' && (
@@ -271,7 +293,7 @@ export function LoginPage() {
                     <Input
                       value={url}
                       onChange={(e) => setUrl(e.target.value)}
-                      placeholder="https://script.google.com/macros/s/â€¦/exec"
+                      placeholder="https://script.google.com/macros/s/…/exec"
                     />
                   </Field>
                   <Button onClick={saveUrl} disabled={!url.trim().startsWith('http')}>

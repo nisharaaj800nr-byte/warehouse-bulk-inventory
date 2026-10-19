@@ -333,5 +333,14 @@ CREATE TABLE scheduled_reports (
 
 CREATE INDEX idx_scheduled_active ON scheduled_reports(is_active);
 `
+    },
+  {
+    version: 7,
+    name: 'totp_2fa',
+    sql: `
+ALTER TABLE users ADD COLUMN totp_secret TEXT;
+ALTER TABLE users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN totp_recovery_json TEXT;
+`
   }
 ];

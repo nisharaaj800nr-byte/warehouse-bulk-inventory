@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import type { Db } from '../db/index.js';
 import { authContext, requireAuth, requireRole } from '../auth/middleware.js';
-import { hashPassword } from '../auth/password.js';
+import { hashPassword, validatePasswordPolicy } from '../auth/password.js';
 import { ROLES, type Role } from '../auth/tokens.js';
 import { writeAudit } from '../lib/audit.js';
 import { fail } from '../lib/errors.js';
@@ -13,7 +13,13 @@ const idSchema = z.object({ id: z.coerce.number().int().min(1) }).strict();
 const createSchema = z
   .object({
     email: z.string().trim().email().max(320),
-    password: z.string().min(8).max(200),
+    password: z
+      .string()
+      .min(10)
+      .max(200)
+      .refine((value) => validatePasswordPolicy(value) === null, {
+        message: 'Password must be at least 10 characters and contain letters and numbers'
+      }),
     role: z.enum(ROLES as [Role, ...Role[]])
   })
   .strict();

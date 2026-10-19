@@ -7,7 +7,7 @@ import { api, getApiMode, getApiUrl, getSheetUrl, setApiUrl, setDemoMode, setShe
 import { errorMessage } from '../lib/query';
 import { hasRole } from '../lib/utils';
 import { Badge, Button, Card, Field, Input, PageHeader, Switch } from '../ui/base';
-import { useToast } from '../ui/overlay';
+import { Modal, useToast } from '../ui/overlay';
 import { useAuth } from './auth';
 
 const KNOWN_FIELDS: { key: string; label: string; type: 'text' | 'password' | 'switch'; hint?: string }[] = [
@@ -256,6 +256,204 @@ export function SettingsPage() {
           </p>
         )}
       </Card>
+
+      <TwoFactorCard />
     </div>
+  );
+}
+
+/* ---------------- two-factor authentication ---------------- */
+
+function TwoFactorCard() {
+  const toast = useToast();
+  const status = useQuery({ queryKey: ['totpStatus'], queryFn: () => api.totpStatus() });
+  const [stage, setStage] = useState<'idle' | 'setup' | 'recovery' | 'disable'>('idle');
+  const [secret, setSecret] = useState('');
+  const [uri, setUri] = useState('');
+  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+
+  const setup = useMutation({
+    mutationFn: () => api.totpSetup(),
+    onSuccess: (result) => {
+      setSecret(result.secret);
+      setUri(result.otpauthUri);
+      setCode('');
+      setStage('setup');
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+  const enable = useMutation({
+    mutationFn: () => api.totpEnable(code.trim()),
+    onSuccess: (result) => {
+      setRecoveryCodes(result.recoveryCodes);
+      setStage('recovery');
+      void status.refetch();
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+  const disable = useMutation({
+    mutationFn: () => api.totpDisable(password, code.trim()),
+    onSuccess: () => {
+      toast.ok('Two-factor authentication disabled.');
+      setStage('idle');
+      setPassword('');
+      setCode('');
+      void status.refetch();
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+  const enabled = status.data?.enabled ?? false;
+  const close = () => {
+    setStage('idle');
+    setCode('');
+    setPassword('');
+  };
+
+  return (
+    <Card
+      title="Two-factor authentication"
+      actions={
+        status.data ? (
+          <Badge tone={enabled ? 'ok' : 'neutral'}>{enabled ? 'Enabled' : 'Off'}</Badge>
+        ) : undefined
+      }
+    >
+      <p className="hint" style={{ marginTop: 0 }}>
+        {enabled
+          ? `Authenticator app is protecting this account. Recovery codes left: ${status.data?.recoveryCodesLeft ?? 0}.`
+          : 'Add a 6-digit authenticator code on top of your password.'}
+      </p>
+
+      {enabled ? (
+        <Button variant="danger" onClick={() => setStage('disable')}>
+          Disable 2FA
+        </Button>
+      ) : (
+        <Button variant="primary" loading={setup.isPending} onClick={() => setup.mutate()}>
+          Enable 2FA
+        </Button>
+      )}
+
+      <Modal
+        open={stage === 'setup'}
+        onClose={close}
+        title="Set up two-factor authentication"
+        footer={
+          <>
+            <Button onClick={close}>Cancel</Button>
+            <Button
+              variant="primary"
+              loading={enable.isPending}
+              disabled={code.trim().length < 6}
+              onClick={() => enable.mutate()}
+            >
+              Verify and enable
+            </Button>
+          </>
+        }
+      >
+        <div className="stack" style={{ gap: 12 }}>
+          <p className="hint" style={{ margin: 0 }}>
+            Add this account to Google Authenticator, 1Password, Authy or any TOTP app. Paste the setup URI manually
+            if your app supports it.
+          </p>
+          <Field label="Secret key">
+            <Input value={secret} readOnly className="mono" />
+          </Field>
+          <Field label="Setup URI">
+            <Input value={uri} readOnly className="mono" />
+          </Field>
+          <Field label="6-digit code" hint="Enter the code shown in your app to confirm.">
+            <Input
+              value={code}
+              onChange={(event) => setCode(event.target.value)}
+              placeholder="123456"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+            />
+          </Field>
+        </div>
+      </Modal>
+
+      <Modal
+        open={stage === 'recovery'}
+        onClose={close}
+        title="Save your recovery codes"
+        footer={
+          <Button
+            variant="primary"
+            onClick={() => {
+              void navigator.clipboard?.writeText(recoveryCodes.join('\n'));
+              toast.ok('Recovery codes copied.');
+              close();
+            }}
+          >
+            Copy and close
+          </Button>
+        }
+      >
+        <p className="hint" style={{ marginTop: 0 }}>
+          Each code works once if you lose your authenticator. Store them somewhere safe — they are shown only now.
+        </p>
+        <div
+          className="mono"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+            gap: 6,
+            padding: 12,
+            border: '1px solid var(--line)',
+            borderRadius: 8,
+          }}
+        >
+          {recoveryCodes.map((value) => (
+            <span key={value}>{value}</span>
+          ))}
+        </div>
+      </Modal>
+
+      <Modal
+        open={stage === 'disable'}
+        onClose={close}
+        title="Disable two-factor authentication"
+        footer={
+          <>
+            <Button onClick={close}>Cancel</Button>
+            <Button
+              variant="danger"
+              loading={disable.isPending}
+              disabled={!password || code.trim().length < 6}
+              onClick={() => disable.mutate()}
+            >
+              Disable 2FA
+            </Button>
+          </>
+        }
+      >
+        <div className="stack" style={{ gap: 10 }}>
+          <Field label="Current password">
+            <Input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
+            />
+          </Field>
+          <Field label="Authenticator code" hint="Or one of your recovery codes.">
+            <Input
+              value={code}
+              onChange={(event) => setCode(event.target.value)}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+            />
+          </Field>
+        </div>
+      </Modal>
+    </Card>
   );
 }

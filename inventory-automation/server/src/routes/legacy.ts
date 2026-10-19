@@ -1,6 +1,14 @@
 import { Router } from 'express';
 import type { Db } from '../db/index.js';
-import { hashPassword, verifyPassword } from '../auth/password.js';
+import { hashPassword, validatePasswordPolicy, verifyPassword } from '../auth/password.js';
+import {
+  consumeRecoveryCode,
+  generateRecoveryCodes,
+  generateTotpSecret,
+  hashRecoveryCode,
+  otpauthUri,
+  verifyTotp
+} from '../auth/totp.js';
 import { resolveSession, revokeSession, type Role } from '../auth/tokens.js';
 import { ApiError } from '../lib/errors.js';
 import { writeAudit } from '../lib/audit.js';
@@ -83,6 +91,16 @@ function rowToArray(row: InventoryRow): string[] {
   ];
 }
 
+function parseRecoveryHashes(raw: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((entry): entry is string => typeof entry === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
 function csvCell(value: unknown): string {
   const text = value === null || value === undefined ? '' : String(value);
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
@@ -123,7 +141,7 @@ export function legacyRouter(db: Db, sessionTtlHours: number, dbPath: string = '
       res.status(200).json(ok(data));
     } catch (error) {
       if (error instanceof ApiError) {
-        const code = error.status === 401 ? 'AUTH_REQUIRED' : error.code;
+        const code = error.code === 'UNAUTHORIZED' ? 'AUTH_REQUIRED' : error.code;
         res.status(200).json({ status: 'error', code, message: error.message });
         return;
       }
@@ -155,7 +173,8 @@ export function legacyRouter(db: Db, sessionTtlHours: number, dbPath: string = '
         const loginEmail = String(params.email ?? '');
         const password = String(params.password ?? '');
         if (!loginEmail || !password) throw new ApiError(400, 'BAD_REQUEST', 'Email and password are required');
-        const result = await authenticate(db, { email: loginEmail, password, ip }, sessionTtlHours);
+        const code = typeof params.code === 'string' ? params.code : undefined;
+        const result = await authenticate(db, { email: loginEmail, password, code, ip }, sessionTtlHours);
         return {
           token: result.token,
           email: result.user.email,
@@ -182,7 +201,8 @@ export function legacyRouter(db: Db, sessionTtlHours: number, dbPath: string = '
         if (!email) throw new ApiError(401, 'AUTH_REQUIRED', 'Not signed in');
         const currentPassword = String(params.oldPassword ?? params.currentPassword ?? '');
         const newPassword = String(params.newPassword ?? '');
-        if (newPassword.length < 8) throw new ApiError(400, 'BAD_REQUEST', 'New password must be at least 8 characters');
+        const policyError = validatePasswordPolicy(newPassword);
+        if (policyError) throw new ApiError(400, 'BAD_REQUEST', policyError);
         const row = db.prepare('SELECT id, password_hash FROM users WHERE email = ?').get(email) as
           | { id: number; password_hash: string }
           | undefined;
@@ -540,6 +560,126 @@ export function legacyRouter(db: Db, sessionTtlHours: number, dbPath: string = '
             newValue: row.new_value
           }))
         };
+      }
+
+      case 'auth.totpStatus': {
+        if (!email) throw new ApiError(401, 'AUTH_REQUIRED', 'Not signed in');
+        const row = db.prepare('SELECT totp_enabled, totp_recovery_json FROM users WHERE email = ?').get(email) as
+          | { totp_enabled: number; totp_recovery_json: string | null }
+          | undefined;
+        if (!row) throw new ApiError(401, 'AUTH_REQUIRED', 'User no longer exists');
+        return {
+          enabled: Number(row.totp_enabled) === 1,
+          recoveryCodesLeft: parseRecoveryHashes(row.totp_recovery_json).length
+        };
+      }
+
+      case 'auth.totpSetup': {
+        if (!email) throw new ApiError(401, 'AUTH_REQUIRED', 'Not signed in');
+        const row = db.prepare('SELECT id, totp_enabled FROM users WHERE email = ?').get(email) as
+          | { id: number; totp_enabled: number }
+          | undefined;
+        if (!row) throw new ApiError(401, 'AUTH_REQUIRED', 'User no longer exists');
+        if (Number(row.totp_enabled) === 1) {
+          throw new ApiError(400, 'BAD_REQUEST', 'Two-factor authentication is already enabled');
+        }
+
+        const secret = generateTotpSecret();
+        db.prepare(
+          'UPDATE users SET totp_secret = ?, totp_enabled = 0, totp_recovery_json = NULL, updated_at = ? WHERE id = ?'
+        ).run(secret, new Date().toISOString(), row.id);
+        return { secret, otpauthUri: otpauthUri(secret, email) };
+      }
+
+      case 'auth.totpEnable': {
+        if (!email) throw new ApiError(401, 'AUTH_REQUIRED', 'Not signed in');
+        const code = String(params.code ?? '').trim();
+        const row = db.prepare('SELECT id, totp_secret, totp_enabled FROM users WHERE email = ?').get(email) as
+          | { id: number; totp_secret: string | null; totp_enabled: number }
+          | undefined;
+        if (!row) throw new ApiError(401, 'AUTH_REQUIRED', 'User no longer exists');
+        if (Number(row.totp_enabled) === 1) {
+          throw new ApiError(400, 'BAD_REQUEST', 'Two-factor authentication is already enabled');
+        }
+        if (!row.totp_secret) throw new ApiError(400, 'BAD_REQUEST', 'Start the setup flow first');
+        if (!verifyTotp(row.totp_secret, code)) {
+          throw new ApiError(400, 'BAD_REQUEST', 'Invalid authenticator code');
+        }
+
+        const recoveryCodes = generateRecoveryCodes();
+        db.prepare('UPDATE users SET totp_enabled = 1, totp_recovery_json = ?, updated_at = ? WHERE id = ?').run(
+          JSON.stringify(recoveryCodes.map(hashRecoveryCode)),
+          new Date().toISOString(),
+          row.id
+        );
+        writeAudit(db, {
+          actorEmail: email,
+          action: 'TOTP_ENABLED',
+          entity: 'user',
+          entityId: row.id,
+          ip
+        });
+        return { enabled: true, recoveryCodes };
+      }
+
+      case 'auth.totpDisable': {
+        if (!email) throw new ApiError(401, 'AUTH_REQUIRED', 'Not signed in');
+        const password = String(params.password ?? '');
+        const code = String(params.code ?? '').trim();
+        const row = db
+          .prepare('SELECT id, password_hash, totp_secret, totp_enabled, totp_recovery_json FROM users WHERE email = ?')
+          .get(email) as
+          | {
+              id: number;
+              password_hash: string;
+              totp_secret: string | null;
+              totp_enabled: number;
+              totp_recovery_json: string | null;
+            }
+          | undefined;
+        if (!row) throw new ApiError(401, 'AUTH_REQUIRED', 'User no longer exists');
+        if (!(await verifyPassword(password, row.password_hash))) {
+          throw new ApiError(401, 'AUTH_REQUIRED', 'Current password is incorrect');
+        }
+
+        if (Number(row.totp_enabled) === 1) {
+          const totpOk = !!row.totp_secret && verifyTotp(row.totp_secret, code);
+          const remaining = totpOk ? null : consumeRecoveryCode(parseRecoveryHashes(row.totp_recovery_json), code);
+          if (!totpOk && remaining === null) {
+            throw new ApiError(400, 'BAD_REQUEST', 'Invalid authenticator or recovery code');
+          }
+        }
+
+        db.prepare(
+          'UPDATE users SET totp_secret = NULL, totp_enabled = 0, totp_recovery_json = NULL, updated_at = ? WHERE id = ?'
+        ).run(new Date().toISOString(), row.id);
+        writeAudit(db, {
+          actorEmail: email,
+          action: 'TOTP_DISABLED',
+          entity: 'user',
+          entityId: row.id,
+          ip
+        });
+        return { enabled: false };
+      }
+
+      case 'auth.totpReset': {
+        assertAdmin(role);
+        const target = String(params.email ?? '').trim().toLowerCase();
+        const row = db.prepare('SELECT id FROM users WHERE email = ?').get(target) as { id: number } | undefined;
+        if (!row) throw new ApiError(404, 'NOT_FOUND', `User ${target} not found`);
+        db.prepare(
+          'UPDATE users SET totp_secret = NULL, totp_enabled = 0, totp_recovery_json = NULL, updated_at = ? WHERE id = ?'
+        ).run(new Date().toISOString(), row.id);
+        writeAudit(db, {
+          actorEmail: email,
+          action: 'TOTP_RESET',
+          entity: 'user',
+          entityId: row.id,
+          details: { target },
+          ip
+        });
+        return { reset: true };
       }
 
       case 'auth.users': {

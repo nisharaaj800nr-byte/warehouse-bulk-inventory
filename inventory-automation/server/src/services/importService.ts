@@ -133,11 +133,39 @@ function coalesce(value: string | number | null | undefined): string | number | 
  * Inserts or updates one device record. Existing values are preserved when the
  * incoming value is empty, so a partial source can never wipe known data.
  */
+export interface UpsertOptions {
+  /** When set, the previous inventory state is captured so the job can be rolled back. */
+  jobId?: number;
+}
+
+function captureSnapshot(db: Db, jobId: number, barcode: string): void {
+  const seen = db
+    .prepare('SELECT 1 AS seen FROM import_snapshots WHERE job_id = ? AND barcode = ? LIMIT 1')
+    .get(jobId, barcode) as { seen: number } | undefined;
+  if (seen) return;
+
+  const existing = db.prepare('SELECT * FROM inventory WHERE barcode = ?').get(barcode) as
+    | Record<string, unknown>
+    | undefined;
+  db.prepare(
+    `INSERT INTO import_snapshots (job_id, barcode, existed, snapshot_json, created_at)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run(
+    jobId,
+    barcode,
+    existing ? 1 : 0,
+    existing ? JSON.stringify(existing) : null,
+    new Date().toISOString()
+  );
+}
+
 export function upsertInventory(
   db: Db,
   mapped: MappedRow,
-  rules: RuleSets
+  rules: RuleSets,
+  options: UpsertOptions = {}
 ): { action: 'inserted' | 'updated'; applied: AppliedRules } {
+  if (options.jobId) captureSnapshot(db, options.jobId, mapped.barcode);
   const applied = applyRules(mapped, rules);
   const exists = db.prepare('SELECT id FROM inventory WHERE barcode = ?').get(mapped.barcode) as { id: number } | undefined;
   const now = new Date().toISOString();
@@ -175,6 +203,79 @@ export function upsertInventory(
   );
 
   return { action: exists ? 'updated' : 'inserted', applied };
+}
+
+export interface RollbackResult {
+  restored: number;
+  removed: number;
+}
+
+/**
+ * Restores every inventory row an import job touched to its pre-commit state.
+ * Cars that the job created are deleted; rows that already existed are restored
+ * from their snapshot.
+ */
+export function rollbackImport(db: Db, jobId: number): RollbackResult {
+  const job = db
+    .prepare('SELECT id, status, rolled_back_at FROM import_jobs WHERE id = ?')
+    .get(jobId) as { id: number; status: string; rolled_back_at: string | null } | undefined;
+  if (!job) throw new Error(`Import job ${jobId} not found`);
+  if (job.rolled_back_at) throw new Error(`Import job ${jobId} was already rolled back`);
+  if (job.status !== 'COMPLETE' && job.status !== 'PARTIAL_FAILURE') {
+    throw new Error(`Import job ${jobId} is ${job.status} and cannot be rolled back`);
+  }
+
+  const snapshots = db
+    .prepare('SELECT barcode, existed, snapshot_json FROM import_snapshots WHERE job_id = ? ORDER BY id DESC')
+    .all(jobId) as unknown as Array<{ barcode: string; existed: number; snapshot_json: string | null }>;
+
+  const now = new Date().toISOString();
+  let restored = 0;
+  let removed = 0;
+
+  db.exec('BEGIN');
+  try {
+    for (const snapshot of snapshots) {
+      if (Number(snapshot.existed) === 1 && snapshot.snapshot_json) {
+        const row = JSON.parse(snapshot.snapshot_json) as Record<string, unknown>;
+        const text = (value: unknown): string | null =>
+          value === null || value === undefined ? null : String(value);
+        const numeric = (value: unknown): number | null =>
+          value === null || value === undefined ? null : Number(value);
+
+        db.prepare(
+          `UPDATE inventory
+             SET model = ?, brand = ?, status = ?, stock_age = ?, age_bucket = ?, priority = ?,
+                 status_bucket = ?, location = ?, bin_bucket = ?, source_type = ?, updated_at = ?
+           WHERE barcode = ?`
+        ).run(
+          text(row.model),
+          text(row.brand),
+          text(row.status),
+          numeric(row.stock_age),
+          text(row.age_bucket),
+          text(row.priority),
+          text(row.status_bucket),
+          text(row.location),
+          text(row.bin_bucket),
+          text(row.source_type),
+          now,
+          snapshot.barcode
+        );
+        restored += 1;
+      } else {
+        db.prepare('DELETE FROM inventory WHERE barcode = ?').run(snapshot.barcode);
+        removed += 1;
+      }
+    }
+    db.prepare('UPDATE import_jobs SET rolled_back_at = ? WHERE id = ?').run(now, jobId);
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
+
+  return { restored, removed };
 }
 
 export interface MergeBatchInput {

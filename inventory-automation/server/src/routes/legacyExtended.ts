@@ -6,7 +6,7 @@ import { ROLES, type Role } from '../auth/tokens.js';
 import { ApiError } from '../lib/errors.js';
 import { writeAudit } from '../lib/audit.js';
 import { parseWorkbookToRows } from '../services/fileImport.js';
-import { upsertInventory } from '../services/importService.js';
+import { rollbackImport, upsertInventory } from '../services/importService.js';
 import { loadRules } from '../services/rulesEngine.js';
 import type { MappedRow } from '../services/rulesEngine.js';
 import { runBackup } from '../services/backup.js';
@@ -240,7 +240,7 @@ export async function dispatchExtended(
       try {
         for (const row of rows) {
           const mapped = JSON.parse(row.mapped_json) as MappedRow;
-          const result = upsertInventory(db, mapped, rules);
+          const result = upsertInventory(db, mapped, rules, { jobId: staged.jobId });
           if (result.action === 'inserted') inserted += 1;
           else updated += 1;
         }
@@ -272,6 +272,7 @@ export async function dispatchExtended(
       return {
         ok: true,
         dryRun: false,
+        jobId: staged.jobId,
         processed: staged.rowsTotal,
         valid: staged.rowsOk,
         imported: inserted + updated,
@@ -280,6 +281,22 @@ export async function dispatchExtended(
         warnings: [] as string[],
         errorSample: errorSample.map((row) => ({ row: Number(row.row_number), errors: [row.message] }))
       };
+    }
+
+    case 'import.rollback': {
+      writerOnly();
+      const jobId = num(params.jobId ?? params.id ?? 0, 0);
+      if (!jobId) throw new ApiError(400, 'BAD_REQUEST', 'jobId is required');
+      const result = rollbackImport(db, jobId);
+      writeAudit(db, {
+        actorEmail: email,
+        action: 'IMPORT_ROLLED_BACK',
+        entity: 'import_job',
+        entityId: jobId,
+        details: result,
+        ip
+      });
+      return { ok: true, ...result };
     }
 
     case 'import.discard': {

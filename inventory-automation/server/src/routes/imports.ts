@@ -5,7 +5,7 @@ import { authContext, requireAuth, requireRole } from '../auth/middleware.js';
 import { writeAudit } from '../lib/audit.js';
 import { fail } from '../lib/errors.js';
 import { parseInput } from '../lib/validate.js';
-import { loadMappings, mapRow, mergeSources, upsertInventory } from '../services/importService.js';
+import { mergeSources, rollbackImport, upsertInventory } from '../services/importService.js';
 import { parseWorkbookToRows } from '../services/fileImport.js';
 import { stageUpload } from '../services/staging.js';
 import { loadRules, type MappedRow } from '../services/rulesEngine.js';
@@ -276,7 +276,7 @@ const uploadFileSchema = z
       try {
         for (const row of rows) {
           const mapped = JSON.parse(row.mapped_json) as MappedRow;
-          const { action } = upsertInventory(db, mapped, rules);
+          const { action } = upsertInventory(db, mapped, rules, { jobId: id });
           if (action === 'inserted') inserted += 1;
           else updated += 1;
         }
@@ -303,6 +303,28 @@ const uploadFileSchema = z
         ip: req.ip
       });
       res.status(200).json({ ok: true, data: { job: toJob(updatedJob), inserted, updated } });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/imports/:id/rollback', auth, operator, (req, res, next) => {
+    try {
+      const { id } = parseInput(idSchema, req.params);
+      const { user } = authContext(req);
+      const result = rollbackImport(db, id);
+
+      writeAudit(db, {
+        actorEmail: user.email,
+        action: 'IMPORT_ROLLED_BACK',
+        entity: 'import_job',
+        entityId: id,
+        details: result,
+        ip: req.ip
+      });
+
+      const job = db.prepare('SELECT * FROM import_jobs WHERE id = ?').get(id) as unknown as JobRow;
+      res.status(200).json({ ok: true, data: { job: toJob(job), ...result } });
     } catch (error) {
       next(error);
     }

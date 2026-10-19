@@ -73,6 +73,7 @@ function UniversalImportTab() {
   const [sourceType, setSourceType] = useState('');
   const [dedupe, setDedupe] = useState(false);
   const [commitResult, setCommitResult] = useState<ImportCommitResult | null>(null);
+  const [rollbackOpen, setRollbackOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [sheetUrl, setSheetUrl] = useState('');
   const [tabs, setTabs] = useState<{ name: string; rows: number; cols: number }[]>([]);
@@ -179,6 +180,16 @@ function UniversalImportTab() {
       setPreview(null);
       setCommitResult(null);
       toast.info('Staging cleared.');
+    },
+    onError: (err) => toast.error(errorMessage(err)),
+  });
+
+  const rollbackMutation = useMutation({
+    mutationFn: () => api.importRollback(Number(commitResult?.jobId ?? 0)),
+    onSuccess: (result) => {
+      toast.ok(`Import rolled back — ${result.restored} restored, ${result.removed} removed.`);
+      setRollbackOpen(false);
+      setCommitResult(null);
     },
     onError: (err) => toast.error(errorMessage(err)),
   });
@@ -451,11 +462,32 @@ function UniversalImportTab() {
                 <Button onClick={() => discardMutation.mutate()} loading={discardMutation.isPending}>
                   Discard staging
                 </Button>
+                {commitResult.jobId && commitResult.imported > 0 && (
+                  <Button variant="danger" onClick={() => setRollbackOpen(true)}>
+                    Roll back import
+                  </Button>
+                )}
               </div>
             )}
           </div>
         )}
       </Card>
+
+      <ConfirmDialog
+        open={rollbackOpen}
+        title="Roll back import"
+        confirmLabel="Roll back"
+        tone="danger"
+        loading={rollbackMutation.isPending}
+        message={
+          <>
+            Undo import job <strong>#{commitResult?.jobId ?? ''}</strong>? Rows created by this job will be deleted and
+            previously existing rows will be restored to their earlier values.
+          </>
+        }
+        onCancel={() => setRollbackOpen(false)}
+        onConfirm={() => rollbackMutation.mutate()}
+      />
     </div>
   );
 }

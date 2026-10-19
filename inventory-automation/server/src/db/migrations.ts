@@ -292,5 +292,24 @@ BEGIN
   WHERE OLD.source_type IS NOT NEW.source_type;
 END;
 `
+    },
+  {
+    version: 5,
+    name: 'import_rollback',
+    sql: `
+CREATE TABLE import_snapshots (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  job_id INTEGER NOT NULL REFERENCES import_jobs(id) ON DELETE CASCADE,
+  barcode TEXT NOT NULL,
+  existed INTEGER NOT NULL,
+  snapshot_json TEXT,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX idx_import_snapshots_job ON import_snapshots(job_id);
+CREATE INDEX idx_import_snapshots_barcode ON import_snapshots(barcode);
+
+ALTER TABLE import_jobs ADD COLUMN rolled_back_at TEXT;
+`
   }
 ];

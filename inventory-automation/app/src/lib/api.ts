@@ -323,6 +323,7 @@ export interface ImportStaged {
 export interface ImportCommitResult {
   ok: boolean;
   dryRun: boolean;
+  jobId?: number;
   processed: number;
   valid: number;
   imported: number;
@@ -470,6 +471,8 @@ export const api = {
       { offset, limit },
     ),
   importCommit: (params: Record<string, unknown>) => callApi<ImportCommitResult>('import.commit', params),
+  importRollback: (jobId: number) =>
+    callApi<{ ok: boolean; restored: number; removed: number }>('import.rollback', { jobId }),
   importDiscard: () => callApi<{ ok: boolean }>('import.discard'),
   importFileToSource: (b64: string, fileName: string, sheetName: string) =>
     callApi<{ sheetName: string; headers: string[]; totalRows: number; format: string }>('import.fileToSource', {

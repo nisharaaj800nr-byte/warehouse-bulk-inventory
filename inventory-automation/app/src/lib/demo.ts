@@ -159,7 +159,21 @@ export async function demoCall(action: string, params: Record<string, unknown>):
     case 'auth.changePassword':
       return { changed: true };
 
-    case 'dashboard':
+    case 'dashboard': {
+      const counts = (column: string) => {
+        const index = HEADERS.indexOf(column);
+        if (index < 0) return [];
+        const map = new Map<string, number>();
+        for (const row of INVENTORY) {
+          const key = String(row[index] ?? '').trim() || '(empty)';
+          map.set(key, (map.get(key) ?? 0) + 1);
+        }
+        return Array.from(map.entries())
+          .map(([key, count]) => ({ key, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 8);
+      };
+
       return {
         inventoryCount: INVENTORY.length,
         headers: HEADERS,
@@ -167,7 +181,12 @@ export async function demoCall(action: string, params: Record<string, unknown>):
         recentErrors: buildErrors(),
         sourcesActive: 4,
         reportsActive: 6,
+        byStatus: counts('STATUS'),
+        byAgeBucket: counts('AGE_BUCKET'),
+        byStatusBucket: counts('STATUS_BUCKET'),
+        topBrands: counts('BRAND'),
       };
+    }
 
     case 'inventory.list': {
       let rows = INVENTORY.slice();

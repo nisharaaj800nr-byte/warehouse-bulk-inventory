@@ -91,26 +91,22 @@ export function Shell() {
           ))}
         </nav>
         <div className="side-foot">
-          <select
-            aria-label="Language"
-            value={lang}
-            onChange={(event) => { changeLang(event.target.value as Lang); window.setTimeout(() => window.location.reload(), 50); }}
-            style={{ width: '100%', marginBottom: 8, padding: '4px 6px', borderRadius: 6 }}
-          >
-            <option value="en">English</option>
-            <option value="hi">à¤¹à¤¿à¤¨à¥à¤¦à¥€</option>
-            <option value="gu">àª—à«àªœàª°àª¾àª¤à«€</option>
-          </select>
-          <select
-            aria-label="Language"
-            value={lang}
-            onChange={(event) => { changeLang(event.target.value as Lang); window.setTimeout(() => window.location.reload(), 50); }}
-            style={{ width: '100%', marginBottom: 8, padding: '4px 6px', borderRadius: 6 }}
-          >
-            <option value="en">English</option>
-            <option value="hi">हिन्दी</option>
-            <option value="gu">ગુજરાતી</option>
-          </select>
+          <label className="side-lang">
+            <span>Language</span>
+            <select
+              aria-label="Language"
+              className="side-select"
+              value={lang}
+              onChange={(event) => {
+                changeLang(event.target.value as Lang);
+                window.setTimeout(() => window.location.reload(), 50);
+              }}
+            >
+              <option value="en">English</option>
+              <option value="hi">हिन्दी</option>
+              <option value="gu">ગુજરાતી</option>
+            </select>
+          </label>
           <Button
             variant="ghost"
             size="sm"

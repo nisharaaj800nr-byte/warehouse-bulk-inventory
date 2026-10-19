@@ -8,6 +8,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  LabelList,
   Legend,
   Line,
   LineChart,
@@ -84,7 +85,9 @@ function DistributionBar({ title, data }: { title: string; data?: DistributionPo
                 axisLine={false}
               />
               <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value) => [String(value), 'Items']} />
-              <Bar dataKey="count" name="Items" fill="var(--brand)" radius={[0, 4, 4, 0]} barSize={14} />
+              <Bar dataKey="count" name="Items" fill="var(--brand)" radius={[0, 4, 4, 0]} barSize={14}>
+                <LabelList dataKey="count" position="right" fontSize={11} fill="var(--muted)" />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -109,8 +112,8 @@ function DistributionDonut({ title, data }: { title: string; data?: Distribution
                 data={rows}
                 dataKey="count"
                 nameKey="key"
-                innerRadius="52%"
-                outerRadius="78%"
+                innerRadius={70}
+                outerRadius={108}
                 paddingAngle={2}
                 stroke="var(--surface)"
                 strokeWidth={2}

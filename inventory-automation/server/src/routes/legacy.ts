@@ -447,26 +447,51 @@ export function legacyRouter(db: Db, sessionTtlHours: number, dbPath: string = '
         }));
 
       case 'alerts.list':
-        return (db.prepare('SELECT * FROM alerts ORDER BY name ASC').all() as unknown as Array<{
-          id: number;
-          name: string;
-          type: string;
-          threshold_value: number;
-          is_active: number;
-        }>).map((row) => ({
-          id: String(row.id),
-          name: row.name,
-          type: row.type,
-          thresholdValue: row.threshold_value,
-          active: Number(row.is_active) === 1
-        }));
+        return (
+          db.prepare('SELECT * FROM alerts ORDER BY name ASC').all() as unknown as Array<{
+            id: number;
+            name: string;
+            type: string;
+            threshold_value: number;
+            filters_json: string | null;
+            is_active: number;
+          }>
+        ).map((row) => {
+          let filters: Record<string, string> = {};
+          try {
+            filters = row.filters_json ? (JSON.parse(row.filters_json) as Record<string, string>) : {};
+          } catch {
+            filters = {};
+          }
+          return {
+            'Alert Name': row.name,
+            Type: row.type,
+            'Filter Field': filters.filterField ?? '',
+            'Filter Value': filters.filterValue ?? '',
+            Operator: filters.operator ?? 'LT',
+            Threshold: String(row.threshold_value),
+            'Email To': filters.emailTo ?? '',
+            Telegram: filters.telegram === 'ON' ? 'ON' : 'OFF',
+            Active: Number(row.is_active) === 1 ? 'ON' : 'OFF'
+          };
+        });
 
       case 'reports.list':
-        return (db.prepare('SELECT * FROM report_templates ORDER BY name ASC').all() as unknown as Array<{
-          id: number;
-          name: string;
-          config_json: string;
-        }>).map((row) => ({ id: String(row.id), name: row.name, config: JSON.parse(row.config_json) }));
+        return (
+          db.prepare('SELECT * FROM reports ORDER BY name ASC').all() as unknown as Array<{
+            name: string;
+            filter_field: string | null;
+            filter_value: string | null;
+            columns: string | null;
+            is_active: number;
+          }>
+        ).map((row) => ({
+          'Report Name': row.name,
+          'Filter Field': row.filter_field ?? '',
+          'Filter Value': row.filter_value ?? '',
+          'Report Columns': row.columns ?? '',
+          Active: Number(row.is_active) === 1 ? 'ON' : 'OFF'
+        }));
 
       case 'quality.summary': {
         const totalRow = db.prepare('SELECT COUNT(*) AS c FROM inventory').get() as { c: number };

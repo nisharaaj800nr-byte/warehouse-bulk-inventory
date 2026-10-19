@@ -569,6 +569,21 @@ export const api = {
       { sources },
     ),
   multiRun: (jobId: string) => callApi<Record<string, unknown>>('import.multiSource.run', { jobId }),
+  multiStage: (sourceType: string, fileName: string, b64: string) =>
+    callApi<{ staging: string; sourceId: string; sourceName: string; headers: string[]; totalRows: number }>(
+      'import.multiSource.stage',
+      { sourceType, fileName, b64 }
+    ),
+  multiRunLocal: (stagings: Array<{ staging: string; sourceId: string }>) =>
+    callApi<{
+      ok: boolean;
+      jobId: number;
+      devices: number;
+      inserted: number;
+      updated: number;
+      conflicts: number;
+      errors: Array<{ sourceId: number; row: number; field: string; message: string }>;
+    }>('import.multiSource.run', { stagings }),
   multiStatus: (jobId: string) => callApi<Row>('import.multiSource.status', { jobId }),
   sourceDataList: (filters: Record<string, unknown>) =>
     callApi<{ headers: string[]; rows: unknown[][]; total: number }>('sourceData.list', filters),

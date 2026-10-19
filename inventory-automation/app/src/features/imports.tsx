@@ -712,6 +712,200 @@ function MultiSourceTab() {
   );
 }
 
+/* ================= Local multi-source (files) ================= */
+
+function LocalMultiSourceTab() {
+  const toast = useToast();
+  const qc = useQueryClient();
+  const { session } = useAuth();
+  const canOperate = hasRole(session?.role, 'OPERATOR');
+
+  const SOURCES = [
+    { type: 'QC_STOCK', label: 'QC Stock', hint: 'QC pass/fail data' },
+    { type: 'TRC', label: 'TRC', hint: 'Repair / TRC data' },
+    { type: 'INVENTORY', label: 'Inventory', hint: 'Main inventory sheet' },
+    { type: 'LOCATION', label: 'Location', hint: 'Location / bin mapping' },
+  ];
+
+  const [files, setFiles] = useState<Record<string, { name: string; b64: string } | null>>({});
+  const [staged, setStaged] = useState<
+    Record<string, { staging: string; sourceId: string; sourceName: string; rows: number }>
+  >({});
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{
+    jobId: number;
+    devices: number;
+    inserted: number;
+    updated: number;
+    conflicts: number;
+    errors: unknown[];
+  } | null>(null);
+  const [rollbackOpen, setRollbackOpen] = useState(false);
+
+  const pick = async (type: string, file: File | null) => {
+    if (!file) return;
+    const b64 = await fileToBase64(file);
+    setFiles((prev) => ({ ...prev, [type]: { name: file.name, b64 } }));
+    setStaged((prev) => {
+      const next = { ...prev };
+      delete next[type];
+      return next;
+    });
+    setResult(null);
+  };
+
+  const stageAll = async () => {
+    setBusy(true);
+    try {
+      const next: Record<string, { staging: string; sourceId: string; sourceName: string; rows: number }> = {};
+      for (const [type, entry] of Object.entries(files)) {
+        if (!entry) continue;
+        const res = await api.multiStage(type, entry.name, entry.b64);
+        next[type] = {
+          staging: res.staging,
+          sourceId: res.sourceId,
+          sourceName: res.sourceName,
+          rows: res.totalRows,
+        };
+      }
+      setStaged(next);
+      toast.ok('Files validated and staged.');
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const run = async () => {
+    setBusy(true);
+    try {
+      const payload = Object.entries(staged).map(([, entry]) => ({
+        staging: entry.staging,
+        sourceId: entry.sourceId,
+      }));
+      const res = await api.multiRunLocal(payload);
+      setResult(res);
+      setStaged({});
+      setFiles({});
+      toast.ok(`Merged ${res.devices} device(s).`);
+      void qc.invalidateQueries({ queryKey: ['dashboard'] });
+      void qc.invalidateQueries({ queryKey: ['inventory'] });
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const rollback = useMutation({
+    mutationFn: () => api.importRollback(result?.jobId ?? 0),
+    onSuccess: (res) => {
+      toast.ok(`Rolled back — ${res.restored} restored, ${res.removed} removed.`);
+      setRollbackOpen(false);
+      setResult(null);
+      void qc.invalidateQueries({ queryKey: ['inventory'] });
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+  return (
+    <div className="stack">
+      <Card
+        title="Multi-source merge"
+        actions={<span className="hint">One file per source · merged by barcode</span>}
+      >
+        <p className="hint" style={{ marginTop: 0 }}>
+          Upload a CSV or Excel file for each source. Records are merged on barcode, conflicts are resolved with the
+          Priority rules tab, and every change can be rolled back.
+        </p>
+
+        <div className="stack" style={{ gap: 12 }}>
+          {SOURCES.map((source) => (
+            <div key={source.type} className="spread" style={{ gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              <div>
+                <strong>{source.label}</strong>
+                <div className="hint">{source.hint}</div>
+              </div>
+              <div className="row" style={{ gap: 10 }}>
+                {staged[source.type] ? (
+                  <Badge tone="ok">{staged[source.type].rows} rows staged</Badge>
+                ) : files[source.type] ? (
+                  <Badge tone="info">{files[source.type]?.name}</Badge>
+                ) : (
+                  <span className="hint">No file selected</span>
+                )}
+                <label className="btn btn-secondary btn-sm" style={{ margin: 0 }}>
+                  <Upload size={13} /> Choose file
+                  <input
+                    type="file"
+                    accept=".csv,.tsv,.txt,.xls,.xlsx"
+                    style={{ display: 'none' }}
+                    disabled={!canOperate}
+                    onChange={(event) => void pick(source.type, event.target.files?.[0] ?? null)}
+                  />
+                </label>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="row" style={{ gap: 9, marginTop: 16 }}>
+          <Button onClick={() => void stageAll()} loading={busy} disabled={!canOperate || Object.keys(files).length === 0}>
+            Validate files
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => void run()}
+            loading={busy}
+            disabled={!canOperate || Object.keys(staged).length === 0}
+          >
+            Import all sources
+          </Button>
+        </div>
+      </Card>
+
+      {result && (
+        <Card title="Merge result">
+          <div className="row" style={{ gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+            <Badge tone={result.errors.length > 0 ? 'warn' : 'ok'}>
+              {result.errors.length > 0 ? 'Partial' : 'Complete'}
+            </Badge>
+            <span className="tnum muted">
+              job {result.jobId} · devices {result.devices} · inserted {result.inserted} · updated {result.updated} ·
+              conflicts {result.conflicts}
+            </span>
+          </div>
+          {result.errors.length > 0 && (
+            <p className="hint" style={{ marginTop: 0 }}>
+              {result.errors.length} row error(s). Use the Source data tab to inspect the staged rows.
+            </p>
+          )}
+          <Button variant="danger" onClick={() => setRollbackOpen(true)}>
+            Roll back import
+          </Button>
+        </Card>
+      )}
+
+      <ConfirmDialog
+        open={rollbackOpen}
+        title="Roll back merge"
+        confirmLabel="Roll back"
+        tone="danger"
+        loading={rollback.isPending}
+        message={
+          <>
+            Undo merge job <strong>#{result?.jobId ?? ''}</strong>? Rows created by this merge will be deleted and
+            previously existing rows will be restored.
+          </>
+        }
+        onCancel={() => setRollbackOpen(false)}
+        onConfirm={() => rollback.mutate()}
+      />
+    </div>
+  );
+}
+
 /* ================= Conflicts ================= */
 
 function ConflictsTab() {
@@ -983,7 +1177,7 @@ export function ImportsPage() {
       <Tabs
         tabs={[
           { key: 'universal', label: 'Universal import' },
-          ...(isLocal ? [] : [{ key: 'multi', label: 'Multi-source' }]),
+          { key: 'multi', label: 'Multi-source' },
           { key: 'conflicts', label: 'Conflicts' },
           { key: 'priority', label: 'Priority rules' },
           { key: 'sourceData', label: 'Source data' },
@@ -992,7 +1186,7 @@ export function ImportsPage() {
         onChange={setTab}
       />
       {tab === 'universal' && <UniversalImportTab />}
-      {!isLocal && tab === 'multi' && <MultiSourceTab />}
+      {tab === 'multi' && (isLocal ? <LocalMultiSourceTab /> : <MultiSourceTab />)}
       {tab === 'conflicts' && <ConflictsTab />}
       {tab === 'priority' && <PriorityTab />}
       {tab === 'sourceData' && <SourceDataTab />}

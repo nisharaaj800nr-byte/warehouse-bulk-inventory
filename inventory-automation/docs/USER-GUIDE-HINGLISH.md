@@ -36,7 +36,7 @@ Bulk Repair ek repair/warehouse inventory system hai:
 | Local (offline) | `server/data/bulkrepair.db` (SQLite) | Single office/warehouse, fast, no internet |
 | Apps Script | Google Sheets | Phone se kahin se access, Google ecosystem |
 
-Kuch advanced tabs sirf Apps Script mode me kaam karte hain — unpe ⚠️ mark hai. Local mode me Sources, Mapping, Priority rules, Report templates aur Sources delete ab supported hain; sirf Google Sheets-specific cheezein (Multi-source, Sheet security) Apps Script mode me rehti hain.
+Kuch advanced tabs sirf Apps Script mode me kaam karte hain — unpe ⚠️ mark hai. Local mode me Sources, Mapping, Priority rules, Report templates, Conflicts, Alerts checks, Reports definitions, Source data, Selftest aur file-based Multi-source merge sab supported hain. Sirf Google Sheets-specific cheezein (Sheet se direct import, Sheet security, Telegram test) Apps Script mode me rehti hain.
 
 ---
 
@@ -347,22 +347,24 @@ File se data laane ka main rasta.
 - Age column numeric ho
 - Ek hi file me duplicate barcode na ho
 
-### 8.2 Multi-source ⚠️
-
-Sirf Apps Script mode.
+### 8.2 Multi-source ✅
 
 Purpose: QC Stock + TRC + Inventory + Location jaise alag sources ko **barcode pe join** karke ek final record banana.
 
-**Flow:**
+**Local mode (files):**
+
+1. Har source ke liye ek CSV/Excel file choose karo (QC Stock, TRC, Inventory, Location)
+2. **Validate files** — har file stage hoti hai, columns auto-map hote hain
+3. **Import all sources** — merge chalta hai
+4. Result: devices, inserted, updated, conflicts
+5. Galti ho to **Roll back import**
+
+**Apps Script mode (sheets):**
 
 1. Har source ka type + sheet name + sheet ID do
-2. **Validate all** — columns check hote hain
-3. **Import all sources**
-4. Result: total rows, devices, conflicts
+2. **Validate all** → **Import all sources**
 
-Conflict ka matlab: same barcode, same field, do sources me alag value. Kaun jeetega ye **Priority rules** decide karte hain.
-
-Local mode me ye tab error dega — wahan Universal import use karo.
+Conflict ka matlab: same barcode, same field, do sources me alag value. Kaun jeetega ye **Priority rules** decide karte hain (local me bhi editable).
 
 ### 8.3 Conflicts ✅
 
@@ -1016,7 +1018,7 @@ Kaise kaam karta hai:
 | Camera nahi chal raha | Permission; HTTPS/localhost |
 | Print bigad raha | Margins None, scale 100%, background ON |
 | Sessions tab khali | Koi active session nahi ya admin nahi ho |
-| Multi-source error | Local mode me available nahi — Universal import use karo |
+| Multi-source error | Har source ke liye file select karo; barcode column hona chahiye |
 | Priority rules error | Field khali na ho; source type QC_STOCK/TRC/INVENTORY/LOCATION/OTHER me se ho |
 | Sheet security error | Apps Script only |
 | Report templates error | Ab local me supported hai — Config JSON valid hona chahiye |

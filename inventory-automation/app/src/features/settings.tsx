@@ -158,9 +158,11 @@ export function SettingsPage() {
       <div className="grid-2">
         <Card title="Notification tests">
           <div className="row" style={{ gap: 9, flexWrap: 'wrap' }}>
-            <Button icon={<Send size={14} />} loading={tgTest.isPending} disabled={!canAdmin} onClick={() => tgTest.mutate()}>
-              Test Telegram
-            </Button>
+            {getApiMode() === 'gas' && (
+              <Button icon={<Send size={14} />} loading={tgTest.isPending} disabled={!canAdmin} onClick={() => tgTest.mutate()}>
+                Test Telegram
+              </Button>
+            )}
             <Button icon={<Mail size={14} />} loading={emailTest.isPending} disabled={!canAdmin} onClick={() => emailTest.mutate()}>
               Test email
             </Button>

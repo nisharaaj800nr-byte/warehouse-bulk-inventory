@@ -159,6 +159,11 @@ function captureSnapshot(db: Db, jobId: number, barcode: string): void {
   );
 }
 
+/** Captures the pre-change row for an import job so the job can be rolled back. */
+export function snapshotForRollback(db: Db, jobId: number, barcode: string): void {
+  captureSnapshot(db, jobId, barcode);
+}
+
 export function upsertInventory(
   db: Db,
   mapped: MappedRow,

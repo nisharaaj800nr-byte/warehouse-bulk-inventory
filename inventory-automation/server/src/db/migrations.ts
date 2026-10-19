@@ -399,5 +399,22 @@ ALTER TABLE sources ADD COLUMN join_fields TEXT;
 ALTER TABLE sources ADD COLUMN type_label TEXT;
 ALTER TABLE report_templates ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1;
 `
+    },
+  {
+    version: 10,
+    name: 'reports_definitions',
+    sql: `
+CREATE TABLE reports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  filter_field TEXT,
+  filter_value TEXT,
+  columns TEXT,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  created_by TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+`
   }
 ];

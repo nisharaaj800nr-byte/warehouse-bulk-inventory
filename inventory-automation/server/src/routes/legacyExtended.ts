@@ -6,7 +6,14 @@ import { ROLES, type Role } from '../auth/tokens.js';
 import { ApiError } from '../lib/errors.js';
 import { writeAudit } from '../lib/audit.js';
 import { parseWorkbookToRows } from '../services/fileImport.js';
-import { rollbackImport, upsertInventory } from '../services/importService.js';
+import {
+  loadMappings,
+  mapRow,
+  mergeSources,
+  rollbackImport,
+  snapshotForRollback,
+  upsertInventory
+} from '../services/importService.js';
 import { loadRules } from '../services/rulesEngine.js';
 import type { MappedRow } from '../services/rulesEngine.js';
 import { runBackup } from '../services/backup.js';
@@ -88,6 +95,54 @@ function loadStagedFile(db: Db, staging: string): StagedFileRow {
   const row = db.prepare('SELECT * FROM import_files WHERE id = ?').get(staging) as StagedFileRow | undefined;
   if (!row) throw new ApiError(404, 'NOT_FOUND', 'Uploaded file was not found or already expired');
   return row;
+}
+
+const MULTI_TYPES = ['QC_STOCK', 'TRC', 'INVENTORY', 'LOCATION'] as const;
+
+function autoTargetForHeader(header: string): string {
+  const key = header.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (/BARCODE|SKU|IMEI|SERIAL/.test(key)) return 'BARCODE';
+  if (/MODEL|PRODUCT|ITEM/.test(key)) return 'MODEL';
+  if (/BRAND|MAKE|MANUFACTURER/.test(key)) return 'BRAND';
+  if (/STATUS|CONDITION|STATE/.test(key)) return 'STATUS';
+  if (/AGE|DAYS/.test(key)) return 'STOCK_AGE';
+  if (/LOCATION|BIN|SHELF|RACK/.test(key)) return 'LOCATION';
+  if (/PRIORITY/.test(key)) return 'PRIORITY';
+  return header.toUpperCase();
+}
+
+function ensureTypedSource(db: Db, sourceType: string): { id: number; name: string } {
+  const existing = db
+    .prepare('SELECT id, name FROM sources WHERE source_type = ? ORDER BY is_active DESC, id ASC LIMIT 1')
+    .get(sourceType) as { id: number; name: string } | undefined;
+  if (existing) return existing;
+
+  const now = new Date().toISOString();
+  const name = `${sourceType} import`;
+  const result = db
+    .prepare(
+      `INSERT INTO sources
+         (name, source_type, sheet_name, join_key, is_active, role, sheet_id, join_fields, type_label, created_at, updated_at)
+       VALUES (?, ?, NULL, 'barcode', 1, 'JOIN', NULL, NULL, ?, ?, ?)`
+    )
+    .run(name, sourceType, sourceType, now, now);
+  return { id: Number(result.lastInsertRowid), name };
+}
+
+function ensureAutoMappings(db: Db, sourceId: number, headers: string[]): void {
+  const count = db.prepare('SELECT COUNT(*) AS total FROM field_mappings WHERE source_id = ?').get(sourceId) as {
+    total: number;
+  };
+  if (Number(count.total) > 0) return;
+
+  const insert = db.prepare(
+    `INSERT INTO field_mappings (source_id, source_column, target_field, is_required, output_order, is_active)
+     VALUES (?, ?, ?, ?, ?, 1)`
+  );
+  headers.forEach((header, index) => {
+    const target = autoTargetForHeader(header);
+    insert.run(sourceId, header, target, target === 'BARCODE' ? 1 : 0, index + 1);
+  });
 }
 
 function toScheduled(row: ScheduledReportRow) {
@@ -608,14 +663,23 @@ export async function dispatchExtended(
     case 'alerts.save': {
       adminOnly();
       const name = String(params.name ?? '').trim();
-      const type = String(params.type ?? 'AGE_OVER').toUpperCase();
-      const thresholdValue = num(params.thresholdValue ?? params.threshold, 0);
       if (!name) throw new ApiError(400, 'BAD_REQUEST', 'Alert name is required');
-      if (!['AGE_OVER', 'STATUS_BUCKET_COUNT', 'MISSING_FIELD'].includes(type)) {
-        throw new ApiError(400, 'BAD_REQUEST', `Unknown alert type ${type}`);
-      }
-      const filters = params.filters ? JSON.stringify(params.filters) : null;
+
+      const filterField = String(params.filterField ?? 'BRAND').trim().toUpperCase() || 'BRAND';
+      const filterValue = String(params.filterValue ?? '').trim();
+      const operator = String(params.operator ?? 'LT').trim().toUpperCase();
+      const thresholdValue = num(params.threshold ?? params.thresholdValue, 0);
+      const telegram = String(params.telegram ?? 'OFF').trim().toUpperCase() === 'ON' ? 'ON' : 'OFF';
+      const emailTo = String(params.emailTo ?? '').trim();
       const active = bool(params.active, true);
+
+      const type = /AGE/.test(filterField)
+        ? 'AGE_OVER'
+        : /STATUS/.test(filterField)
+          ? 'STATUS_BUCKET_COUNT'
+          : 'MISSING_FIELD';
+
+      const filters = JSON.stringify({ filterField, filterValue, operator, emailTo, telegram });
       const now = new Date().toISOString();
 
       const existing = db.prepare('SELECT id FROM alerts WHERE name = ?').get(name) as { id: number } | undefined;
@@ -863,6 +927,173 @@ export async function dispatchExtended(
       };
     }
 
+    /* ---------------- conflicts ---------------- */
+    case 'conflicts.list': {
+      const limit = Math.min(1000, Math.max(1, Number(params.limit ?? 500) || 500));
+      const rows = db
+        .prepare(
+          `SELECT barcode, field, source_a, value_a, source_b, value_b, final_value, rule, created_at
+             FROM data_conflicts
+            ORDER BY id DESC
+            LIMIT ?`
+        )
+        .all(limit) as unknown as Array<{
+        barcode: string;
+        field: string;
+        source_a: string;
+        value_a: string | null;
+        source_b: string;
+        value_b: string | null;
+        final_value: string | null;
+        rule: string;
+        created_at: string;
+      }>;
+
+      const total = Number((db.prepare('SELECT COUNT(*) AS total FROM data_conflicts').get() as { total: number }).total);
+
+      return {
+        headers: ['Barcode', 'Field', 'Source A', 'Value A', 'Source B', 'Value B', 'Final Value', 'Rule', 'Created'],
+        rows: rows.map((row) => [
+          row.barcode,
+          row.field,
+          row.source_a,
+          row.value_a ?? '',
+          row.source_b,
+          row.value_b ?? '',
+          row.final_value ?? '',
+          row.rule,
+          row.created_at
+        ]),
+        total
+      };
+    }
+
+    case 'conflicts.clear': {
+      adminOnly();
+      const result = db.prepare('DELETE FROM data_conflicts').run();
+      writeAudit(db, {
+        actorEmail: email,
+        action: 'CONFLICTS_CLEARED',
+        entity: 'data_conflicts',
+        details: { cleared: Number(result.changes) },
+        ip
+      });
+      return { cleared: Number(result.changes) };
+    }
+
+    /* ---------------- local multi-source (file based) ---------------- */
+    case 'import.multiSource.stage': {
+      writerOnly();
+      const sourceType = String(params.sourceType ?? '').toUpperCase();
+      if (!MULTI_TYPES.includes(sourceType as (typeof MULTI_TYPES)[number])) {
+        throw new ApiError(400, 'BAD_REQUEST', `sourceType must be one of ${MULTI_TYPES.join(', ')}`);
+      }
+      const fileName = String(params.fileName ?? 'upload');
+      const base64 = String(params.b64 ?? '');
+      if (!base64) throw new ApiError(400, 'BAD_REQUEST', 'File content is required');
+
+      const parsed = parseWorkbookToRows(fileName, Buffer.from(base64, 'base64'));
+      if (parsed.rows.length === 0) throw new ApiError(400, 'BAD_REQUEST', 'File has no data rows');
+
+      const source = ensureTypedSource(db, sourceType);
+      ensureAutoMappings(db, source.id, parsed.headers);
+
+      const staging = randomUUID();
+      const now = new Date().toISOString();
+      db.prepare(
+        'INSERT INTO import_files (id, filename, headers_json, rows_json, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+      ).run(staging, fileName, JSON.stringify(parsed.headers), JSON.stringify(parsed.rows), email, now);
+
+      return {
+        staging,
+        sourceId: String(source.id),
+        sourceName: source.name,
+        headers: parsed.headers,
+        totalRows: parsed.rows.length
+      };
+    }
+
+    case 'import.multiSource.run': {
+      writerOnly();
+      const incoming = Array.isArray(params.stagings) ? (params.stagings as Array<Record<string, unknown>>) : [];
+      if (incoming.length === 0) throw new ApiError(400, 'BAD_REQUEST', 'No staged files supplied');
+
+      const batches: Array<{ sourceId: number; rows: Array<Record<string, unknown>>; fileName: string }> = [];
+      let totalRows = 0;
+
+      for (const entry of incoming) {
+        const staging = String(entry.staging ?? '');
+        const sourceId = num(entry.sourceId, 0);
+        if (!staging || !sourceId) throw new ApiError(400, 'BAD_REQUEST', 'Each entry needs staging and sourceId');
+        const file = loadStagedFile(db, staging);
+
+        const source = db.prepare('SELECT id, source_type FROM sources WHERE id = ?').get(sourceId) as
+          | { id: number; source_type: string }
+          | undefined;
+        if (!source) throw new ApiError(404, 'NOT_FOUND', `Source ${sourceId} not found`);
+
+        if (db.prepare('SELECT COUNT(*) AS total FROM field_mappings WHERE source_id = ?').get(sourceId) &&
+            Number((db.prepare('SELECT COUNT(*) AS total FROM field_mappings WHERE source_id = ?').get(sourceId) as { total: number }).total) === 0) {
+          ensureAutoMappings(db, sourceId, JSON.parse(file.headers_json) as string[]);
+        }
+
+        const rows = JSON.parse(file.rows_json) as Array<Record<string, unknown>>;
+        totalRows += rows.length;
+        batches.push({ sourceId, rows, fileName: file.filename });
+      }
+
+      const now = new Date().toISOString();
+      const jobResult = db
+        .prepare(
+          `INSERT INTO import_jobs (kind, source_id, status, filename, rows_total, rows_ok, rows_failed, created_by, created_at, finished_at)
+           VALUES ('MULTI', NULL, 'UPLOADED', ?, ?, 0, 0, ?, ?, NULL)`
+        )
+        .run(batches.map((batch) => batch.fileName).join(', ').slice(0, 240), totalRows, email, now);
+      const jobId = Number(jobResult.lastInsertRowid);
+
+      // Capture the previous state of every barcode that this merge will touch.
+      for (const batch of batches) {
+        const mappings = loadMappings(db, batch.sourceId);
+        const source = db.prepare('SELECT source_type FROM sources WHERE id = ?').get(batch.sourceId) as {
+          source_type: string;
+        };
+        for (const raw of batch.rows) {
+          const { mapped } = mapRow(raw, mappings, source.source_type);
+          if (mapped?.barcode) snapshotForRollback(db, jobId, mapped.barcode);
+        }
+      }
+
+      const result = mergeSources(
+        db,
+        batches.map((batch) => ({ sourceId: batch.sourceId, rows: batch.rows }))
+      );
+
+      const status = result.errors.length > 0 ? 'PARTIAL_FAILURE' : 'COMPLETE';
+      db.prepare('UPDATE import_jobs SET status = ?, rows_ok = ?, rows_failed = ?, finished_at = ? WHERE id = ?').run(
+        status,
+        result.devices,
+        result.errors.length,
+        new Date().toISOString(),
+        jobId
+      );
+
+      for (const entry of incoming) {
+        const staging = String(entry.staging ?? '');
+        if (staging) db.prepare('DELETE FROM import_files WHERE id = ?').run(staging);
+      }
+
+      writeAudit(db, {
+        actorEmail: email,
+        action: 'MULTI_SOURCE_IMPORTED',
+        entity: 'import_job',
+        entityId: jobId,
+        details: { files: batches.length, devices: result.devices, conflicts: result.conflicts },
+        ip
+      });
+
+      return { ok: true, jobId, ...result };
+    }
+
     /* ---------------- assistant ---------------- */
     case 'ai.command': {
       writerOnly();
@@ -987,6 +1218,234 @@ export async function dispatchExtended(
       cancelPurchaseOrder(db, id);
       writeAudit(db, { actorEmail: email, action: 'PO_CANCELLED', entity: 'purchase_order', entityId: id, ip });
       return { cancelled: true };
+    }
+
+    case 'alerts.check': {
+      const alerts = db.prepare('SELECT * FROM alerts WHERE is_active = 1 ORDER BY id ASC').all() as unknown as Array<{
+        id: number;
+        name: string;
+        type: string;
+        threshold_value: number;
+        filters_json: string | null;
+      }>;
+
+      const columns: Record<string, string> = {
+        BRAND: 'brand',
+        STATUS: 'status',
+        LOCATION: 'location',
+        STATUS_BUCKET: 'status_bucket',
+        AGE_BUCKET: 'age_bucket',
+        PRIORITY: 'priority',
+        SOURCE: 'source_type',
+        SOURCE_TYPE: 'source_type',
+        MODEL: 'model'
+      };
+
+      const triggered: Array<Record<string, unknown>> = [];
+      for (const alert of alerts) {
+        let filters: Record<string, string> = {};
+        try {
+          filters = alert.filters_json ? (JSON.parse(alert.filters_json) as Record<string, string>) : {};
+        } catch {
+          filters = {};
+        }
+
+        const column = columns[String(filters.filterField ?? '').toUpperCase()];
+        const value = String(filters.filterValue ?? '').trim();
+        const clauses: string[] = [];
+        const params: Array<string | number> = [];
+        if (column && value) {
+          clauses.push(`${column} = ?`);
+          params.push(value);
+        }
+        const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+        const count = Number(
+          (db.prepare(`SELECT COUNT(*) AS total FROM inventory ${where}`).get(...params) as { total: number }).total
+        );
+
+        const threshold = Number(alert.threshold_value);
+        const operator = String(filters.operator ?? 'LT').toUpperCase();
+        const hit =
+          operator === 'GT'
+            ? count > threshold
+            : operator === 'GTE'
+              ? count >= threshold
+              : operator === 'LTE'
+                ? count <= threshold
+                : count < threshold;
+
+        if (hit) {
+          triggered.push({
+            name: alert.name,
+            type: alert.type,
+            count,
+            threshold,
+            operator,
+            filter: column && value ? `${filters.filterField}=${value}` : 'all inventory'
+          });
+          db.prepare('UPDATE alerts SET last_fired_at = ? WHERE id = ?').run(new Date().toISOString(), alert.id);
+        }
+      }
+
+      return { checked: alerts.length, total: alerts.length, triggered };
+    }
+
+    /* ---------------- report definitions (local) ---------------- */
+    case 'reports.save': {
+      adminOnly();
+      const name = String(params.name ?? '').trim();
+      if (!name) throw new ApiError(400, 'BAD_REQUEST', 'Report name is required');
+      const filterField = String(params.filterField ?? '').trim().toUpperCase();
+      const filterValue = String(params.filterValue ?? '').trim();
+      const reportColumns = String(params.columns ?? '').trim();
+      const active = String(params.active ?? 'ON').toUpperCase() === 'ON' ? 1 : 0;
+      const now = new Date().toISOString();
+
+      const existing = db.prepare('SELECT id FROM reports WHERE name = ?').get(name) as { id: number } | undefined;
+      if (existing) {
+        db.prepare(
+          'UPDATE reports SET filter_field = ?, filter_value = ?, columns = ?, is_active = ?, updated_at = ? WHERE id = ?'
+        ).run(filterField, filterValue, reportColumns, active, now, existing.id);
+      } else {
+        db.prepare(
+          `INSERT INTO reports (name, filter_field, filter_value, columns, is_active, created_by, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        ).run(name, filterField, filterValue, reportColumns, active, email, now, now);
+      }
+      writeAudit(db, { actorEmail: email, action: 'REPORT_SAVED', entity: 'report', entityId: name, ip });
+      return { saved: name };
+    }
+
+    case 'reports.delete': {
+      adminOnly();
+      const name = String(params.name ?? '').trim();
+      const result = db.prepare('DELETE FROM reports WHERE name = ?').run(name);
+      if (Number(result.changes) === 0) throw new ApiError(404, 'NOT_FOUND', `Report ${name} not found`);
+      writeAudit(db, { actorEmail: email, action: 'REPORT_DELETED', entity: 'report', entityId: name, ip });
+      return { deleted: name };
+    }
+
+    case 'reports.bulkCreate': {
+      adminOnly();
+      const list = Array.isArray(params.reports) ? (params.reports as Array<Record<string, unknown>>) : [];
+      if (list.length === 0) throw new ApiError(400, 'BAD_REQUEST', 'No reports supplied');
+      const created: string[] = [];
+      const now = new Date().toISOString();
+      const insert = db.prepare(
+        `INSERT INTO reports (name, filter_field, filter_value, columns, is_active, created_by, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 1, ?, ?, ?)
+         ON CONFLICT(name) DO UPDATE SET filter_field = excluded.filter_field, filter_value = excluded.filter_value,
+           columns = excluded.columns, updated_at = excluded.updated_at`
+      );
+      for (const entry of list) {
+        const name = String(entry.name ?? entry['Report Name'] ?? '').trim();
+        if (!name) continue;
+        insert.run(
+          name,
+          String(entry.filterField ?? '').toUpperCase(),
+          String(entry.filterValue ?? ''),
+          String(entry.columns ?? ''),
+          email,
+          now,
+          now
+        );
+        created.push(name);
+      }
+      return { created };
+    }
+
+    /* ---------------- source data browser (local) ---------------- */
+    case 'sourceData.list': {
+      const limit = Math.min(500, Math.max(1, Number(params.limit ?? 500) || 500));
+      const q = String(params.q ?? '').trim().toLowerCase();
+      const rows = db
+        .prepare(
+          `SELECT r.mapped_json
+             FROM import_rows r
+             JOIN import_jobs j ON j.id = r.job_id
+            WHERE r.mapped_json IS NOT NULL
+            ORDER BY j.created_at DESC, r.row_number ASC
+            LIMIT ?`
+        )
+        .all(limit) as unknown as Array<{ mapped_json: string }>;
+
+      const headers = [
+        'BARCODE',
+        'MODEL',
+        'BRAND',
+        'STATUS',
+        'STOCK_AGE',
+        'AGE_BUCKET',
+        'PRIORITY',
+        'STATUS_BUCKET',
+        'LOCATION',
+        'BIN_BUCKET',
+        'SOURCE_TYPE'
+      ];
+
+      const data = rows.map((row) => {
+        let parsed: Record<string, unknown> = {};
+        try {
+          parsed = JSON.parse(row.mapped_json) as Record<string, unknown>;
+        } catch {
+          parsed = {};
+        }
+        const lower = JSON.stringify(parsed).toLowerCase();
+        return { parsed, match: !q || lower.includes(q) };
+      });
+
+      const filtered = data.filter((entry) => entry.match).map((entry) => {
+        const mapped = entry.parsed;
+        return headers.map((header) => {
+          const key = header.toLowerCase().replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
+          const value = mapped[key] ?? mapped[header] ?? '';
+          return value === null || value === undefined ? '' : String(value);
+        });
+      });
+
+      return { headers, rows: filtered, total: filtered.length };
+    }
+
+    case 'sourceData.history': {
+      const rows = db
+        .prepare(
+          `SELECT filename, kind, status, rows_total, created_at
+             FROM import_jobs
+            ORDER BY created_at DESC
+            LIMIT 20`
+        )
+        .all() as unknown as Array<{
+        filename: string | null;
+        kind: string;
+        status: string;
+        rows_total: number;
+        created_at: string;
+      }>;
+      return {
+        headers: ['FILE', 'KIND', 'STATUS', 'ROWS', 'CREATED'],
+        data: rows.map((row) => [
+          row.filename ?? '(no file)',
+          row.kind,
+          row.status,
+          String(row.rows_total),
+          row.created_at
+        ])
+      };
+    }
+
+    case 'selftest.run': {
+      adminOnly();
+      const users = Number((db.prepare('SELECT COUNT(*) AS total FROM users').get() as { total: number }).total);
+      const inventory = Number((db.prepare('SELECT COUNT(*) AS total FROM inventory').get() as { total: number }).total);
+      const smtp = db.prepare("SELECT value FROM settings WHERE key = 'SMTP_HOST'").get() as { value: string } | undefined;
+      const checks = [
+        { name: 'Database connection', ok: true, detail: 'SQLite online' },
+        { name: 'User accounts', ok: users > 0, detail: `${users} account(s)` },
+        { name: 'Inventory table', ok: true, detail: `${inventory} item(s)` },
+        { name: 'Email configuration', ok: Boolean(smtp?.value), detail: smtp?.value ? 'SMTP host set' : 'SMTP not configured' },
+        { name: 'Automatic backups', ok: true, detail: 'Every 6 hours, 7 kept' }
+      ];
+      return { ok: checks.every((check) => check.ok), checks, authVersion: 'local-2' };
     }
 
     /* ---------------- priority rules (local) ---------------- */

@@ -28,6 +28,10 @@ export function SetupPage() {
     const current = getApiUrl();
     return current === '/api/gas' ? '' : current;
   });
+  const [localUrl, setLocalUrl] = useState(() => {
+    const current = getApiUrl();
+    return current === '/api/gas' ? '' : current;
+  });
   const [sheet, setSheet] = useState(getSheetUrl());
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -37,8 +41,13 @@ export function SetupPage() {
   const [probe, setProbe] = useState<'idle' | 'ok' | 'fail'>('idle');
 
   function applyBackend(): void {
-    if (backend === 'local') clearApiUrl();
-    else setApiUrl(url.trim());
+    if (backend === 'local') {
+      const value = localUrl.trim().replace(/\/+$/, '');
+      if (value) setApiUrl(value.endsWith('/api/gas') ? value : `${value}/api/gas`);
+      else clearApiUrl();
+    } else {
+      setApiUrl(url.trim());
+    }
   }
 
   async function testConnection(): Promise<void> {
@@ -76,8 +85,12 @@ export function SetupPage() {
       setError('Enter a valid email address');
       return;
     }
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters');
+    if (password.length < 10) {
+      setError('Password must be at least 10 characters');
+      return;
+    }
+    if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+      setError('Password must contain both letters and numbers');
       return;
     }
     if (backend === 'local' && password !== confirm) {
@@ -190,6 +203,19 @@ export function SetupPage() {
                     Data stays in Google Sheets. Requires internet. Works from your phone anywhere.
                   </p>
                 </button>
+
+                {backend === 'local' && (
+                  <Field
+                    label="Server URL (optional)"
+                    hint="Default: http://localhost:5050. Phone pe LAN IP ya VPS URL daalo, e.g. http://192.168.1.10:5050"
+                  >
+                    <Input
+                      value={localUrl}
+                      onChange={(event) => setLocalUrl(event.target.value)}
+                      placeholder="http://localhost:5050"
+                    />
+                  </Field>
+                )}
 
                 {backend === 'gas' && (
                   <Field label="Apps Script web-app URL (/exec)">

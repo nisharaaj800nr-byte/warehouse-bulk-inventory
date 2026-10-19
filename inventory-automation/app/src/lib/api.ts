@@ -53,9 +53,12 @@ export const getApiUrl = (): string => {
   if (stored) return stored;
   const envUrl = import.meta.env.VITE_API_URL;
   if (envUrl) return envUrl;
-  // Served by the local server (or a packaged desktop/mobile shell) the panel
-  // and the API share one origin, so /api/gas is the correct default.
+  // Served by the local server the panel and the API share one origin.
   try {
+    const capacitor = Boolean((window as unknown as { Capacitor?: unknown }).Capacitor);
+    // Packaged mobile shells serve assets from https://localhost; the real
+    // backend lives on the host machine (adb reverse) or a LAN/VPS address.
+    if (capacitor) return 'http://localhost:5050/api/gas';
     if (typeof window !== 'undefined' && /^https?:$/.test(window.location.protocol)) return '/api/gas';
     // Packaged desktop shell (file://) talks to the local server by default.
     if (typeof window !== 'undefined' && window.location.protocol === 'file:') return 'http://localhost:5050/api/gas';

@@ -16,6 +16,7 @@ import { sendWhatsAppTest } from '../services/whatsapp.js';
 import { authenticateWithGoogle } from '../services/googleAuth.js';
 import { toPdfBuffer, toXlsxBuffer } from '../services/reportExport.js';
 import { stageUpload } from '../services/staging.js';
+import { runAssistant } from '../services/assistant.js';
 import {
   cancelPurchaseOrder,
   deleteVendor,
@@ -813,6 +814,13 @@ export async function dispatchExtended(
         groupBy,
         groups: groups.map((group) => ({ key: group.key, count: Number(group.count) }))
       };
+    }
+
+    /* ---------------- assistant ---------------- */
+    case 'ai.command': {
+      writerOnly();
+      const text = String(params.text ?? '');
+      return runAssistant(db, text);
     }
 
     /* ---------------- vendors & purchase orders ---------------- */

@@ -25,7 +25,10 @@ const KNOWN_FIELDS: { key: string; label: string; type: 'text' | 'password' | 's
   { key: 'WHATSAPP_PHONE_ID', label: 'WhatsApp phone number id', type: 'text' },
   { key: 'ALERT_WHATSAPP_TO', label: 'Alert WhatsApp number', type: 'text', hint: 'With country code, e.g. 9198…' },
   { key: 'GOOGLE_CLIENT_ID', label: 'Google OAuth client ID', type: 'text', hint: 'For Sign in with Google' },
-  { key: 'GOOGLE_AUTO_CREATE', label: 'Auto-create Google users (VIEWER)', type: 'switch' }
+  { key: 'GOOGLE_AUTO_CREATE', label: 'Auto-create Google users (VIEWER)', type: 'switch' },
+  { key: 'LLM_API_URL', label: 'LLM API URL', type: 'text', hint: 'OpenAI-compatible chat completions endpoint' },
+  { key: 'LLM_API_KEY', label: 'LLM API key', type: 'password' },
+  { key: 'LLM_MODEL', label: 'LLM model', type: 'text', hint: 'e.g. gpt-4o-mini' }
 ];
 
 export function SettingsPage() {

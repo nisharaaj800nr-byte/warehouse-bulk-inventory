@@ -4,7 +4,7 @@ import { translate } from '../lib/i18n';
 import { useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, CheckCircle2, Link2, Plus, Trash2, Upload } from 'lucide-react';
-import { api, type ImportCommitResult, type ImportStaged } from '../lib/api';
+import { api, getApiMode, type ImportCommitResult, type ImportStaged } from '../lib/api';
 import { errorMessage } from '../lib/query';
 import { hasRole, TARGET_FIELDS, toRowObjects, useDebounced } from '../lib/utils';
 import {
@@ -972,13 +972,18 @@ function SourceDataTab() {
 
 export function ImportsPage() {
   const [tab, setTab] = useState('universal');
+  const isLocal = getApiMode() !== 'gas';
+
   return (
     <div className="stack">
-      <PageHeader title={translate('Imports')} subtitle="Bring data in: files, Google Sheets, or multiple sources at once." />
+      <PageHeader
+        title={translate('Imports')}
+        subtitle={isLocal ? 'Bring data in from CSV, Excel or PDF files.' : 'Bring data in: files, Google Sheets, or multiple sources at once.'}
+      />
       <Tabs
         tabs={[
           { key: 'universal', label: 'Universal import' },
-          { key: 'multi', label: 'Multi-source' },
+          ...(isLocal ? [] : [{ key: 'multi', label: 'Multi-source' }]),
           { key: 'conflicts', label: 'Conflicts' },
           { key: 'priority', label: 'Priority rules' },
           { key: 'sourceData', label: 'Source data' },
@@ -987,7 +992,7 @@ export function ImportsPage() {
         onChange={setTab}
       />
       {tab === 'universal' && <UniversalImportTab />}
-      {tab === 'multi' && <MultiSourceTab />}
+      {!isLocal && tab === 'multi' && <MultiSourceTab />}
       {tab === 'conflicts' && <ConflictsTab />}
       {tab === 'priority' && <PriorityTab />}
       {tab === 'sourceData' && <SourceDataTab />}

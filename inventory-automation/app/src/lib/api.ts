@@ -445,6 +445,7 @@ export const api = {
   /* Sources & mapping */
   sourcesList: (all = false) => callApi<Row[]>('sources.list', all ? { all: true } : {}),
   sourcesSave: (params: Record<string, unknown>) => callApi<{ id: string }>('sources.save', params),
+  sourcesDelete: (id: string) => callApi<{ deleted: string }>('sources.delete', { id }),
   sourcesTypes: () => callApi<string[]>('sources.types'),
   mappingList: (all = false) => callApi<Row[]>('mapping.list', all ? { all: true } : {}),
   mappingHeaders: () => callApi<{ headers: string[] }>('mapping.headers'),

@@ -3,7 +3,7 @@ import { translate } from '../lib/i18n';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Play, Plus, RefreshCw, Trash2 } from 'lucide-react';
-import { api } from '../lib/api';
+import { api, getApiMode } from '../lib/api';
 import { errorMessage } from '../lib/query';
 import { hasRole } from '../lib/utils';
 import {
@@ -309,9 +309,11 @@ export function ReportsPage() {
             <Button icon={<RefreshCw size={14} />} loading={reports.isFetching} onClick={() => void reports.refetch()}>
               Refresh
             </Button>
-            <Button disabled={!canManage} loading={exportAll.isPending} onClick={() => setConfirmExport(true)}>
-              Export all to sheets
-            </Button>
+            {getApiMode() === 'gas' && (
+              <Button disabled={!canManage} loading={exportAll.isPending} onClick={() => setConfirmExport(true)}>
+                Export all to sheets
+              </Button>
+            )}
             <Button disabled={!canAdmin} onClick={() => setBulkOpen(true)}>
               Bulk create
             </Button>

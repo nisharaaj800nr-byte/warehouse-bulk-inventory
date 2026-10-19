@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { KeyRound, Lock, Pencil, Plus, RefreshCw, Unlock } from 'lucide-react';
-import { api, type Role } from '../lib/api';
+import { api, getApiMode, type Role } from '../lib/api';
 import { errorMessage } from '../lib/query';
 import { hasRole } from '../lib/utils';
 import { Badge, Button, Card, EmptyState, ErrorPanel, Field, Input, PageHeader, Select, Switch, Tabs } from '../ui/base';
@@ -339,19 +339,24 @@ function SecurityTab() {
 
 export function UsersPage() {
   const [tab, setTab] = useState('users');
+  const isLocal = getApiMode() !== 'gas';
+
   return (
     <div className="stack">
-      <PageHeader title="Users & Security" subtitle="Portal logins, roles and sheet protections (admin only)." />
+      <PageHeader
+        title="Users & Security"
+        subtitle={isLocal ? 'Portal logins, roles and password policy (admin only).' : 'Portal logins, roles and sheet protections (admin only).'}
+      />
       <Tabs
         tabs={[
           { key: 'users', label: 'Users' },
-          { key: 'security', label: 'Sheet security' },
+          ...(isLocal ? [] : [{ key: 'security', label: 'Sheet security' }]),
         ]}
         active={tab}
         onChange={setTab}
       />
       {tab === 'users' && <UsersTab />}
-      {tab === 'security' && <SecurityTab />}
+      {!isLocal && tab === 'security' && <SecurityTab />}
     </div>
   );
 }

@@ -1,13 +1,13 @@
 /* Data sources: how the daily pipeline reads its raw input. */
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Pencil, Plus, RefreshCw } from 'lucide-react';
+import { Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { errorMessage } from '../lib/query';
 import { hasRole } from '../lib/utils';
 import { Badge, Button, Card, EmptyState, Field, Input, PageHeader, Select, Switch } from '../ui/base';
 import { DataTable, type Column } from '../ui/table';
-import { Modal, useToast } from '../ui/overlay';
+import { ConfirmDialog, Modal, useToast } from '../ui/overlay';
 import { useAuth } from './auth';
 
 interface SourceForm {
@@ -55,6 +55,7 @@ export function SourcesPage() {
 
   const list = useQuery({ queryKey: ['sources', 'all'], queryFn: () => api.sourcesList(true) });
   const [form, setForm] = useState<SourceForm | null>(null);
+  const [deleteFor, setDeleteFor] = useState<SourceForm | null>(null);
 
   const save = useMutation({
     mutationFn: (f: SourceForm) =>
@@ -72,6 +73,16 @@ export function SourcesPage() {
     onSuccess: (res) => {
       toast.ok(`Source saved: ${res.id}`);
       setForm(null);
+      void list.refetch();
+    },
+    onError: (e) => toast.error(errorMessage(e)),
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => api.sourcesDelete(id),
+    onSuccess: (res) => {
+      toast.ok(`Source deleted: ${res.deleted}`);
+      setDeleteFor(null);
       void list.refetch();
     },
     onError: (e) => toast.error(errorMessage(e)),
@@ -100,15 +111,26 @@ export function SourcesPage() {
       label: '',
       align: 'right',
       render: (r) => (
-        <Button
-          size="icon"
-          variant="ghost"
-          aria-label="Edit source"
-          disabled={!canManage}
-          onClick={() => setForm(rowToForm(r))}
-        >
-          <Pencil size={15} />
-        </Button>
+        <div className="row" style={{ gap: 4, justifyContent: 'flex-end' }}>
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label="Edit source"
+            disabled={!canManage}
+            onClick={() => setForm(rowToForm(r))}
+          >
+            <Pencil size={15} />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label="Delete source"
+            disabled={!canManage}
+            onClick={() => setDeleteFor(rowToForm(r))}
+          >
+            <Trash2 size={15} />
+          </Button>
+        </div>
       ),
     },
   ];
@@ -197,6 +219,24 @@ export function SourcesPage() {
           </div>
         )}
       </Modal>
+
+      <ConfirmDialog
+        open={!!deleteFor}
+        title="Delete source"
+        confirmLabel="Delete"
+        tone="danger"
+        loading={remove.isPending}
+        message={
+          <>
+            Delete <strong>{deleteFor?.name ?? ''}</strong>? Its field mappings will be removed too. Inventory data is
+            not affected.
+          </>
+        }
+        onCancel={() => setDeleteFor(null)}
+        onConfirm={() => {
+          if (deleteFor) remove.mutate(deleteFor.id);
+        }}
+      />
     </div>
   );
 }

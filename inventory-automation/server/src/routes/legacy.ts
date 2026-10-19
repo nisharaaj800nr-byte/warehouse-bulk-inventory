@@ -378,14 +378,21 @@ export function legacyRouter(db: Db, sessionTtlHours: number, dbPath: string = '
           sheet_name: string | null;
           join_key: string;
           is_active: number;
+          role: string | null;
+          sheet_id: string | null;
+          join_fields: string | null;
+          type_label: string | null;
         }>;
         return rows.map((row) => ({
-          id: String(row.id),
-          name: row.name,
-          sourceType: row.source_type,
-          sheetName: row.sheet_name ?? '',
-          joinKey: row.join_key,
-          active: Number(row.is_active) === 1
+          'Source ID': String(row.id),
+          'Source Name': row.name,
+          Type: row.type_label ?? row.source_type,
+          Role: row.role ?? 'JOIN',
+          'Sheet Name': row.sheet_name ?? '',
+          'Sheet ID': row.sheet_id ?? '',
+          'Join Key': row.join_key,
+          'Join Fields': row.join_fields ?? '',
+          Active: Number(row.is_active) === 1 ? 'ON' : 'OFF'
         }));
       }
 

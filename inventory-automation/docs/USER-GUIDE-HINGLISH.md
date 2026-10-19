@@ -36,7 +36,7 @@ Bulk Repair ek repair/warehouse inventory system hai:
 | Local (offline) | `server/data/bulkrepair.db` (SQLite) | Single office/warehouse, fast, no internet |
 | Apps Script | Google Sheets | Phone se kahin se access, Google ecosystem |
 
-Kuch advanced tabs sirf Apps Script mode me kaam karte hain — unpe ⚠️ mark hai.
+Kuch advanced tabs sirf Apps Script mode me kaam karte hain — unpe ⚠️ mark hai. Local mode me Sources, Mapping, Priority rules, Report templates aur Sources delete ab supported hain; sirf Google Sheets-specific cheezein (Multi-source, Sheet security) Apps Script mode me rehti hain.
 
 ---
 
@@ -384,9 +384,9 @@ Actions:
 
 Conflict dekhkar priority rules adjust karo, phir merge dobara chalao.
 
-### 8.4 Priority rules ⚠️
+### 8.4 Priority rules ✅
 
-Batata hai ki merge ke waqt kaunsa source jeetega.
+Batata hai ki merge ke waqt kaunsa source jeetega. Local mode me bhi ab editable hai.
 
 | Field | Matlab |
 |---|---|
@@ -404,7 +404,7 @@ Example:
 
 Matlab: status ke liye QC_STOCK sabse bharosemand.
 
-Local mode me ye tab available nahi — merge bhi nahi.
+Local mode me ye rules save hote hain (merge workflow khud Apps Script mode me chalta hai).
 
 ### 8.5 Source data ✅
 
@@ -475,9 +475,9 @@ Actions:
 
 Result: groups + counts.
 
-### 10.3 Templates
+### 10.3 Templates ✅
 
-Reusable report formats (advanced):
+Reusable report formats (advanced; local mode me bhi supported):
 
 - **New template** — naam + config JSON
 - **Edit / Delete**
@@ -655,9 +655,12 @@ Source = data ka origin (QC sheet, TRC sheet, inventory sheet, location sheet).
 | Field | Note |
 |---|---|
 | Name | Unique |
-| Source type | QC_STOCK / TRC / INVENTORY / LOCATION / OTHER |
+| Role | PRIMARY (main data) ya JOIN (extra data) |
+| Type | Free text, e.g. Google Sheet; system QC/TRC/Inventory/Location se source type infer karta hai |
 | Sheet name | Google Sheet tab ka naam |
+| Sheet ID | External spreadsheet ho to |
 | Join key | Default `barcode` |
+| Join fields | Comma-separated fields is source se lene hain |
 | Active | ON/OFF |
 
 ### 14.2 Source types ka matlab
@@ -1014,9 +1017,9 @@ Kaise kaam karta hai:
 | Print bigad raha | Margins None, scale 100%, background ON |
 | Sessions tab khali | Koi active session nahi ya admin nahi ho |
 | Multi-source error | Local mode me available nahi — Universal import use karo |
-| Priority rules error | Local mode me available nahi (Apps Script only) |
+| Priority rules error | Field khali na ho; source type QC_STOCK/TRC/INVENTORY/LOCATION/OTHER me se ho |
 | Sheet security error | Apps Script only |
-| Report templates error | Local mode me available nahi |
+| Report templates error | Ab local me supported hai — Config JSON valid hona chahiye |
 
 ---
 

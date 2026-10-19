@@ -347,22 +347,41 @@ export async function dispatchExtended(
       adminOnly();
       const id = params.id !== undefined && params.id !== '' ? num(params.id, 0) : 0;
       const name = String(params.name ?? params.sourceName ?? '').trim();
-      const sourceType = String(params.sourceType ?? params.type ?? 'OTHER').toUpperCase();
-      const sheetName = params.sheetName === undefined ? null : String(params.sheetName);
-      const joinKey = String(params.joinKey ?? 'barcode');
-      const active = bool(params.active, true);
       if (!name) throw new ApiError(400, 'BAD_REQUEST', 'Source name is required');
-      if (!['QC_STOCK', 'TRC', 'INVENTORY', 'LOCATION', 'OTHER'].includes(sourceType)) {
-        throw new ApiError(400, 'BAD_REQUEST', `Unknown source type ${sourceType}`);
-      }
+
+      const rawType = String(params.type ?? params.sourceType ?? 'OTHER').trim();
+      const upper = rawType.toUpperCase().replace(/\s+/g, '_');
+      const allowed = ['QC_STOCK', 'TRC', 'INVENTORY', 'LOCATION', 'OTHER'];
+      const sourceType = allowed.includes(upper)
+        ? upper
+        : /qc/i.test(rawType) || /qc/i.test(name)
+          ? 'QC_STOCK'
+          : /trc/i.test(rawType) || /trc/i.test(name)
+            ? 'TRC'
+            : /inventory/i.test(rawType) || /inventory/i.test(name)
+              ? 'INVENTORY'
+              : /location/i.test(rawType) || /location/i.test(name)
+                ? 'LOCATION'
+                : 'OTHER';
+
+      const role = String(params.role ?? 'JOIN').trim().toUpperCase() === 'PRIMARY' ? 'PRIMARY' : 'JOIN';
+      const sheetName = params.sheet === undefined ? (params.sheetName === undefined ? null : String(params.sheetName)) : String(params.sheet);
+      const sheetId = params.sheetId === undefined ? null : String(params.sheetId);
+      const joinFields = params.joinFields === undefined ? null : String(params.joinFields);
+      const joinKey = String(params.joinKey ?? 'barcode') || 'barcode';
+      const active = bool(params.active, true);
+      const typeLabel = rawType || sourceType;
 
       const now = new Date().toISOString();
       if (id > 0) {
         const existing = db.prepare('SELECT id FROM sources WHERE id = ?').get(id) as { id: number } | undefined;
         if (!existing) throw new ApiError(404, 'NOT_FOUND', `Source ${id} not found`);
         db.prepare(
-          'UPDATE sources SET name = ?, source_type = ?, sheet_name = ?, join_key = ?, is_active = ?, updated_at = ? WHERE id = ?'
-        ).run(name, sourceType, sheetName, joinKey, active, now, id);
+          `UPDATE sources
+              SET name = ?, source_type = ?, sheet_name = ?, join_key = ?, is_active = ?,
+                  role = ?, sheet_id = ?, join_fields = ?, type_label = ?, updated_at = ?
+            WHERE id = ?`
+        ).run(name, sourceType, sheetName, joinKey, active, role, sheetId, joinFields, typeLabel, now, id);
         return { id: String(id) };
       }
 
@@ -371,11 +390,27 @@ export async function dispatchExtended(
 
       const result = db
         .prepare(
-          `INSERT INTO sources (name, source_type, sheet_name, join_key, is_active, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`
+          `INSERT INTO sources
+             (name, source_type, sheet_name, join_key, is_active, role, sheet_id, join_fields, type_label, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
-        .run(name, sourceType, sheetName, joinKey, active, now, now);
+        .run(name, sourceType, sheetName, joinKey, active, role, sheetId, joinFields, typeLabel, now, now);
       return { id: String(Number(result.lastInsertRowid)) };
+    }
+
+    case 'sources.delete': {
+      adminOnly();
+      const id = num(params.id, 0);
+      const name = String(params.name ?? '').trim();
+      const row = id
+        ? (db.prepare('SELECT id, name FROM sources WHERE id = ?').get(id) as { id: number; name: string } | undefined)
+        : name
+          ? (db.prepare('SELECT id, name FROM sources WHERE name = ?').get(name) as { id: number; name: string } | undefined)
+          : undefined;
+      if (!row) throw new ApiError(404, 'NOT_FOUND', 'Source not found');
+      db.prepare('DELETE FROM sources WHERE id = ?').run(row.id);
+      writeAudit(db, { actorEmail: email, action: 'SOURCE_DELETED', entity: 'source', entityId: row.id, details: { name: row.name }, ip });
+      return { deleted: row.name };
     }
 
     case 'mapping.list': {
@@ -392,14 +427,15 @@ export async function dispatchExtended(
         target_field: string;
         is_required: number;
         is_active: number;
+        output_order: number | null;
       }>;
       return rows.map((row) => ({
-        sourceId: String(row.source_id),
-        source: row.source_name,
-        sourceColumn: row.source_column,
-        targetField: row.target_field,
-        isRequired: Number(row.is_required) === 1,
-        active: Number(row.is_active) === 1
+        Source: row.source_name,
+        'Source Column': row.source_column,
+        'Target Field': row.target_field,
+        Required: Number(row.is_required) === 1 ? 'YES' : 'NO',
+        Active: Number(row.is_active) === 1 ? 'ON' : 'OFF',
+        'Output Order': row.output_order === null ? '' : String(row.output_order)
       }));
     }
 
@@ -415,10 +451,21 @@ export async function dispatchExtended(
       const incoming = Array.isArray(params.mappings) ? (params.mappings as Array<Record<string, unknown>>) : [];
       if (incoming.length === 0) throw new ApiError(400, 'BAD_REQUEST', 'No mappings supplied');
 
+      const resolveSource = (entry: Record<string, unknown>): number => {
+        const direct = entry.sourceId !== undefined && entry.sourceId !== '' ? num(entry.sourceId, 0) : 0;
+        if (direct > 0) return direct;
+        const name = String(entry.source ?? '').trim();
+        if (!name) return 0;
+        const row = db.prepare('SELECT id FROM sources WHERE name = ?').get(name) as { id: number } | undefined;
+        return row ? Number(row.id) : 0;
+      };
+
       const bySource = new Map<number, Array<Record<string, unknown>>>();
       for (const entry of incoming) {
-        const sourceId = num(entry.sourceId, 0);
-        if (sourceId <= 0) throw new ApiError(400, 'BAD_REQUEST', 'Each mapping needs a sourceId');
+        const sourceId = resolveSource(entry);
+        if (sourceId <= 0) {
+          throw new ApiError(400, 'BAD_REQUEST', 'Each mapping needs a known source (sourceId or source name)');
+        }
         const list = bySource.get(sourceId) ?? [];
         list.push(entry);
         bySource.set(sourceId, list);
@@ -440,24 +487,24 @@ export async function dispatchExtended(
             insert.run(
               sourceId,
               String(entry.sourceColumn ?? ''),
-              String(entry.targetField ?? '').toUpperCase(),
-              bool(entry.isRequired, false),
-              index + 1,
-              bool(entry.active, true)
+              String(entry.target ?? entry.targetField ?? '').toUpperCase(),
+              bool(entry.required ?? entry.isRequired, false),
+              Number(entry.order ?? index + 1) || index + 1,
+              bool(entry.active ?? entry.isActive, true)
             );
             saved += 1;
           });
-          db.prepare('UPDATE sources SET updated_at = ? WHERE id = ?').run(now, sourceId);
         }
         db.exec('COMMIT');
       } catch (error) {
         db.exec('ROLLBACK');
         throw error;
       }
+      writeAudit(db, { actorEmail: email, action: 'MAPPING_SAVED', entity: 'mapping', details: { saved }, ip });
       return { saved };
     }
 
-    /* ---------------- rules ---------------- */
+
     case 'rules.age.save': {
       adminOnly();
       const id = num(params.id, 0);
@@ -940,6 +987,115 @@ export async function dispatchExtended(
       cancelPurchaseOrder(db, id);
       writeAudit(db, { actorEmail: email, action: 'PO_CANCELLED', entity: 'purchase_order', entityId: id, ip });
       return { cancelled: true };
+    }
+
+    /* ---------------- priority rules (local) ---------------- */
+    case 'priorityRules.list': {
+      const rows = db
+        .prepare('SELECT field, source_type, rank FROM priority_rules ORDER BY field ASC, rank ASC')
+        .all() as unknown as Array<{ field: string; source_type: string; rank: number }>;
+      const byField = new Map<string, Record<string, string>>();
+      for (const row of rows) {
+        const key = row.field;
+        const entry =
+          byField.get(key) ??
+          ({ FIELD: key, 'Priority 1': '', 'Priority 2': '', 'Priority 3': '', 'Priority 4': '', 'Priority 5': '' } as Record<string, string>);
+        const rank = Number(row.rank);
+        if (rank >= 1 && rank <= 5) entry[`Priority ${rank}`] = row.source_type;
+        byField.set(key, entry);
+      }
+      return Array.from(byField.values());
+    }
+
+    case 'priorityRules.save': {
+      adminOnly();
+      const rules = Array.isArray(params.rules) ? (params.rules as Array<Record<string, unknown>>) : [];
+      const allowed = ['QC_STOCK', 'TRC', 'INVENTORY', 'LOCATION', 'OTHER'];
+      let saved = 0;
+
+      db.exec('BEGIN');
+      try {
+        db.prepare('DELETE FROM priority_rules').run();
+        const insert = db.prepare(
+          'INSERT INTO priority_rules (field, source_type, rank) VALUES (?, ?, ?)'
+        );
+        for (const rule of rules) {
+          const field = String(rule.field ?? rule.FIELD ?? '').trim().toUpperCase();
+          if (!field) continue;
+          for (let rank = 1; rank <= 5; rank += 1) {
+            const source = String(rule[`p${rank}`] ?? rule[`Priority ${rank}`] ?? '').trim().toUpperCase();
+            if (!allowed.includes(source)) continue;
+            insert.run(field, source, rank);
+            saved += 1;
+          }
+        }
+        db.exec('COMMIT');
+      } catch (error) {
+        db.exec('ROLLBACK');
+        throw error;
+      }
+
+      writeAudit(db, { actorEmail: email, action: 'PRIORITY_RULES_SAVED', entity: 'priority_rules', details: { saved }, ip });
+      return { saved };
+    }
+
+    /* ---------------- report templates (local) ---------------- */
+    case 'reports.templates.list': {
+      const rows = db
+        .prepare('SELECT * FROM report_templates ORDER BY name ASC')
+        .all() as unknown as Array<{
+        name: string;
+        config_json: string;
+        created_by: string | null;
+        created_at: string;
+        updated_at: string;
+        is_active: number;
+      }>;
+      return rows.map((row) => ({
+        Name: row.name,
+        'Config JSON': row.config_json,
+        Active: Number(row.is_active) === 1 ? 'ON' : 'OFF',
+        'Created By': row.created_by ?? '',
+        'Updated At': row.updated_at
+      }));
+    }
+
+    case 'reports.templates.save': {
+      adminOnly();
+      const name = String(params.name ?? '').trim();
+      if (!name) throw new ApiError(400, 'BAD_REQUEST', 'Template name is required');
+      const configJson = String(params.configJson ?? params.config ?? '{}');
+      try {
+        JSON.parse(configJson);
+      } catch {
+        throw new ApiError(400, 'BAD_REQUEST', 'Config JSON is not valid JSON');
+      }
+      const active = String(params.active ?? 'ON').toUpperCase() === 'ON' ? 1 : 0;
+      const now = new Date().toISOString();
+
+      const existing = db.prepare('SELECT id FROM report_templates WHERE name = ?').get(name) as { id: number } | undefined;
+      if (existing) {
+        db.prepare(
+          'UPDATE report_templates SET config_json = ?, is_active = ?, updated_at = ? WHERE id = ?'
+        ).run(configJson, active, now, existing.id);
+      } else {
+        db.prepare(
+          `INSERT INTO report_templates (name, config_json, created_by, created_at, updated_at, is_active)
+           VALUES (?, ?, ?, ?, ?, ?)`
+        ).run(name, configJson, email, now, now, active);
+      }
+      writeAudit(db, { actorEmail: email, action: 'REPORT_TEMPLATE_SAVED', entity: 'report_template', entityId: name, ip });
+      return { saved: name };
+    }
+
+    case 'reports.templates.delete': {
+      adminOnly();
+      const name = String(params.name ?? '').trim();
+      if (!name) throw new ApiError(400, 'BAD_REQUEST', 'Template name is required');
+      const result = db.prepare('DELETE FROM report_templates WHERE name = ?').run(name);
+      if (Number(result.changes) === 0) throw new ApiError(404, 'NOT_FOUND', `Template ${name} not found`);
+      writeAudit(db, { actorEmail: email, action: 'REPORT_TEMPLATE_DELETED', entity: 'report_template', entityId: name, ip });
+      return { deleted: name };
     }
 
     /* ---------------- scheduled reports ---------------- */

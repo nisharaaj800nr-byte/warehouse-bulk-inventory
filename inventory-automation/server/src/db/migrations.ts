@@ -388,5 +388,16 @@ CREATE INDEX idx_po_vendor ON purchase_orders(vendor_id);
 CREATE INDEX idx_po_status ON purchase_orders(status);
 CREATE INDEX idx_po_lines_po ON purchase_order_lines(po_id);
 `
+    },
+  {
+    version: 9,
+    name: 'local_parity',
+    sql: `
+ALTER TABLE sources ADD COLUMN role TEXT;
+ALTER TABLE sources ADD COLUMN sheet_id TEXT;
+ALTER TABLE sources ADD COLUMN join_fields TEXT;
+ALTER TABLE sources ADD COLUMN type_label TEXT;
+ALTER TABLE report_templates ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1;
+`
   }
 ];

@@ -333,6 +333,46 @@ export interface ImportCommitResult {
   errorSample: { row: number; errors: string[] }[];
 }
 
+export interface Vendor {
+  id: number;
+  name: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  address: string;
+  notes: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PurchaseOrderLine {
+  id: number;
+  barcode: string;
+  model: string;
+  brand: string;
+  quantity: number;
+  receivedQuantity: number;
+  unitCost: number | null;
+}
+
+export interface PurchaseOrder {
+  id: number;
+  poNumber: string;
+  vendorId: number;
+  vendorName: string;
+  status: 'DRAFT' | 'ORDERED' | 'PARTIAL' | 'RECEIVED' | 'CANCELLED';
+  expectedAt: string;
+  notes: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  lineCount: number;
+  orderedQuantity: number;
+  receivedQuantity: number;
+  lines?: PurchaseOrderLine[];
+}
+
 export type ScheduleFrequency = 'DAILY' | 'WEEKLY' | 'MONTHLY';
 export type ScheduleFormat = 'PDF' | 'XLSX';
 
@@ -446,6 +486,17 @@ export const api = {
   scheduledRun: (id: number) =>
     callApi<{ ok: boolean; sentTo: string; format: ScheduleFormat; bytes: number }>('scheduled.run', { id }),
   scheduledCheck: () => callApi<{ ran: number; results: unknown[] }>('scheduled.check'),
+
+  vendorsList: () => callApi<Vendor[]>('vendors.list'),
+  vendorSave: (params: Record<string, unknown>) => callApi<{ saved: boolean; id: number }>('vendors.save', params),
+  vendorDelete: (id: number) => callApi<{ deleted: boolean }>('vendors.delete', { id }),
+
+  poList: () => callApi<PurchaseOrder[]>('po.list'),
+  poGet: (id: number) => callApi<PurchaseOrder>('po.get', { id }),
+  poSave: (params: Record<string, unknown>) => callApi<{ saved: boolean; id: number }>('po.save', params),
+  poReceive: (id: number, lines: Array<{ lineId: number; quantity: number }>) =>
+    callApi<{ ok: boolean; status: string; received: number }>('po.receive', { id, lines }),
+  poCancel: (id: number) => callApi<{ cancelled: boolean }>('po.cancel', { id }),
 
   /* Users & security */
   authUsers: () =>

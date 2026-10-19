@@ -14,6 +14,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Tag,
+  Truck,
   Upload,
 } from 'lucide-react';
 import type { Role } from '../lib/api';
@@ -53,6 +54,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/mapping', label: 'Field Mapping', icon: ArrowRightLeft },
       { to: '/rules', label: 'Rules', icon: SlidersHorizontal },
       { to: '/alerts', label: 'Alerts', icon: Bell },
+      { to: '/purchasing', label: 'Purchasing', icon: Truck, min: 'MANAGER' },
     ],
   },
   {

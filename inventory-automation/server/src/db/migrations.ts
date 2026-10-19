@@ -342,5 +342,51 @@ ALTER TABLE users ADD COLUMN totp_secret TEXT;
 ALTER TABLE users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE users ADD COLUMN totp_recovery_json TEXT;
 `
+    },
+  {
+    version: 8,
+    name: 'purchasing',
+    sql: `
+CREATE TABLE vendors (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  contact_name TEXT,
+  email TEXT,
+  phone TEXT,
+  address TEXT,
+  notes TEXT,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE purchase_orders (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  po_number TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  vendor_id INTEGER NOT NULL REFERENCES vendors(id) ON DELETE RESTRICT,
+  status TEXT NOT NULL CHECK (status IN ('DRAFT','ORDERED','PARTIAL','RECEIVED','CANCELLED')),
+  expected_at TEXT,
+  notes TEXT,
+  created_by TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE purchase_order_lines (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  po_id INTEGER NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
+  barcode TEXT,
+  model TEXT,
+  brand TEXT,
+  quantity INTEGER NOT NULL DEFAULT 1,
+  received_quantity INTEGER NOT NULL DEFAULT 0,
+  unit_cost REAL,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX idx_po_vendor ON purchase_orders(vendor_id);
+CREATE INDEX idx_po_status ON purchase_orders(status);
+CREATE INDEX idx_po_lines_po ON purchase_order_lines(po_id);
+`
   }
 ];

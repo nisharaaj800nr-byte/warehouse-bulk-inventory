@@ -17,6 +17,19 @@ import { authenticateWithGoogle } from '../services/googleAuth.js';
 import { toPdfBuffer, toXlsxBuffer } from '../services/reportExport.js';
 import { stageUpload } from '../services/staging.js';
 import {
+  cancelPurchaseOrder,
+  deleteVendor,
+  getPurchaseOrder,
+  listPurchaseOrders,
+  listVendors,
+  receivePurchaseOrder,
+  savePurchaseOrder,
+  saveVendor,
+  type PurchaseOrderInput,
+  type ReceiptLine,
+  type VendorInput
+} from '../services/purchasing.js';
+import {
   runDueReports,
   runScheduledReport,
   type Frequency,
@@ -800,6 +813,125 @@ export async function dispatchExtended(
         groupBy,
         groups: groups.map((group) => ({ key: group.key, count: Number(group.count) }))
       };
+    }
+
+    /* ---------------- vendors & purchase orders ---------------- */
+    case 'vendors.list': {
+      if (!role || !['ADMIN', 'OWNER', 'MANAGER'].includes(role)) {
+        throw new ApiError(403, 'FORBIDDEN', 'Manager role required');
+      }
+      return listVendors(db);
+    }
+
+    case 'vendors.save': {
+      adminOnly();
+      const input: VendorInput = {
+        id: params.id ? num(params.id, 0) : undefined,
+        name: String(params.name ?? ''),
+        contactName: params.contactName === undefined ? undefined : String(params.contactName),
+        email: params.email === undefined ? undefined : String(params.email),
+        phone: params.phone === undefined ? undefined : String(params.phone),
+        address: params.address === undefined ? undefined : String(params.address),
+        notes: params.notes === undefined ? undefined : String(params.notes),
+        active: params.active === undefined ? true : bool(params.active, true) === 1
+      };
+      const result = saveVendor(db, input);
+      writeAudit(db, {
+        actorEmail: email,
+        action: input.id ? 'VENDOR_UPDATED' : 'VENDOR_CREATED',
+        entity: 'vendor',
+        entityId: result.id,
+        ip
+      });
+      return { saved: true, id: result.id };
+    }
+
+    case 'vendors.delete': {
+      adminOnly();
+      const id = num(params.id, 0);
+      if (!id) throw new ApiError(400, 'BAD_REQUEST', 'id is required');
+      deleteVendor(db, id);
+      writeAudit(db, { actorEmail: email, action: 'VENDOR_DELETED', entity: 'vendor', entityId: id, ip });
+      return { deleted: true };
+    }
+
+    case 'po.list': {
+      if (!role || !['ADMIN', 'OWNER', 'MANAGER', 'OPERATOR'].includes(role)) {
+        throw new ApiError(403, 'FORBIDDEN', 'Signed-in operator role required');
+      }
+      return listPurchaseOrders(db);
+    }
+
+    case 'po.get': {
+      if (!role || !['ADMIN', 'OWNER', 'MANAGER', 'OPERATOR'].includes(role)) {
+        throw new ApiError(403, 'FORBIDDEN', 'Signed-in operator role required');
+      }
+      const id = num(params.id, 0);
+      if (!id) throw new ApiError(400, 'BAD_REQUEST', 'id is required');
+      return getPurchaseOrder(db, id);
+    }
+
+    case 'po.save': {
+      writerOnly();
+      const input: PurchaseOrderInput = {
+        id: params.id ? num(params.id, 0) : undefined,
+        poNumber: params.poNumber === undefined ? undefined : String(params.poNumber),
+        vendorId: num(params.vendorId, 0),
+        status: params.status === undefined ? 'DRAFT' : String(params.status),
+        expectedAt: params.expectedAt === undefined ? undefined : String(params.expectedAt),
+        notes: params.notes === undefined ? undefined : String(params.notes),
+        lines: Array.isArray(params.lines)
+          ? (params.lines as Array<Record<string, unknown>>).map((line) => ({
+              barcode: line.barcode === undefined ? undefined : String(line.barcode),
+              model: line.model === undefined ? undefined : String(line.model),
+              brand: line.brand === undefined ? undefined : String(line.brand),
+              quantity: num(line.quantity, 1),
+              unitCost: line.unitCost === undefined || line.unitCost === null || line.unitCost === ''
+                ? undefined
+                : Number(line.unitCost)
+            }))
+          : []
+      };
+      const result = savePurchaseOrder(db, input, email);
+      writeAudit(db, {
+        actorEmail: email,
+        action: input.id ? 'PO_UPDATED' : 'PO_CREATED',
+        entity: 'purchase_order',
+        entityId: result.id,
+        ip
+      });
+      return { saved: true, id: result.id };
+    }
+
+    case 'po.receive': {
+      writerOnly();
+      const id = num(params.id, 0);
+      if (!id) throw new ApiError(400, 'BAD_REQUEST', 'id is required');
+      const receipts: ReceiptLine[] = Array.isArray(params.lines)
+        ? (params.lines as Array<Record<string, unknown>>).map((line) => ({
+            lineId: num(line.lineId, 0),
+            quantity: num(line.quantity, 0)
+          }))
+        : [];
+      const result = receivePurchaseOrder(db, id, receipts, email);
+      writeAudit(db, {
+        actorEmail: email,
+        action: 'PO_RECEIVED',
+        entity: 'purchase_order',
+        entityId: id,
+        details: { received: result.received, status: result.status },
+        ip
+      });
+      return { ok: true, ...result };
+    }
+
+    case 'po.cancel': {
+      writerOnly();
+      const id = num(params.id, 0);
+      if (!id) throw new ApiError(400, 'BAD_REQUEST', 'id is required');
+      cancelPurchaseOrder(db, id);
+      writeAudit(db, { actorEmail: email, action: 'PO_CANCELLED', entity: 'purchase_order', entityId: id, ip });
+      return { cancelled: true };
     }
 
     /* ---------------- scheduled reports ---------------- */

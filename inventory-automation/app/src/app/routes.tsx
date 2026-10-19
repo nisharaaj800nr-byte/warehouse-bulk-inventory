@@ -14,6 +14,7 @@ import { AlertsPage } from '../features/alerts';
 import { UsersPage } from '../features/users';
 import { SessionsPage } from '../features/sessions';
 import { ScheduledPage } from '../features/scheduled';
+import { PurchasingPage } from '../features/purchasing';
 import { ActivityPage } from '../features/activity';
 import { SettingsPage } from '../features/settings';
 import { AssistantPage } from '../features/assistant';
@@ -121,6 +122,14 @@ export function AppRoutes() {
           element={
             <RequireRole min="ADMIN">
               <SessionsPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="purchasing"
+          element={
+            <RequireRole min="MANAGER">
+              <PurchasingPage />
             </RequireRole>
           }
         />

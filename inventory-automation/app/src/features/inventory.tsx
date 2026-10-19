@@ -2,7 +2,7 @@ import { translate } from '../lib/i18n';
 /* Inventory explorer: search, filters, pagination, detail drawer, CRUD, export. */
 import { useEffect, useMemo, useState } from 'react';
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
-import { Boxes, Download, Pencil, Plus, RefreshCw, ScanLine, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
+import { Bookmark, Boxes, Download, Pencil, Plus, RefreshCw, ScanLine, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
 import { api, callApi } from '../lib/api';
 import { errorMessage, queryClient } from '../lib/query';
 import { downloadBase64, downloadText, hasRole, useDebounced } from '../lib/utils';
@@ -27,6 +27,27 @@ import { BulkEditButton } from './bulk-edit';
 const FILTER_FIELDS = ['STATUS_BUCKET', 'AGE_BUCKET', 'BRAND', 'CATEGORY', 'PRIORITY', 'BIN_BUCKET', 'SOURCE'];
 const HIDDEN_KEY = 'ors.inv.hidden';
 const RIGHT_ALIGN = /AGE|COUNT|QTY|PRICE/;
+const VIEW_KEY = 'br.inventory.view.v1';
+const VIEWS_KEY = 'br.inventory.views.v1';
+const LOCKED_COLUMNS = ['BARCODE'];
+
+interface SavedView {
+  name: string;
+  q: string;
+  filters: Record<string, string>;
+  perPage: number;
+}
+
+function readJson<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+const INITIAL_VIEW = readJson<{ q?: string; filters?: Record<string, string>; perPage?: number }>(VIEW_KEY, {});
 
 function labelOf(h: string): string {
   return h.replace(/_/g, ' ');
@@ -44,7 +65,7 @@ function BucketBadge({ value }: { value: string }) {
 }
 
 function renderCell(header: string, value: string) {
-  if (!value) return <span className="muted">ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â</span>;
+  if (!value) return <span className="muted">—</span>;
   if (header === 'STATUS_BUCKET' || header === 'STATUS' || header === 'AGE_BUCKET') {
     return <BucketBadge value={value} />;
   }
@@ -116,7 +137,7 @@ function ItemDialog({
       {err && <div className="login-err">{err}</div>}
       <div className="form-grid">
         {headers.map((h) => (
-          <Field key={h} label={labelOf(h)} hint={isEdit && h === 'BARCODE' ? 'Key column ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â not editable.' : undefined}>
+          <Field key={h} label={labelOf(h)} hint={isEdit && h === 'BARCODE' ? 'Key column — not editable.' : undefined}>
             <Input
               value={values[h] ?? ''}
               disabled={isEdit && h === 'BARCODE'}
@@ -135,12 +156,12 @@ export function InventoryPage() {
   const canOperate = hasRole(session?.role, 'OPERATOR');
   const canManage = hasRole(session?.role, 'MANAGER');
 
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState(INITIAL_VIEW.q ?? '');
   const [scanOpen, setScanOpen] = useState(false);
   const debouncedQ = useDebounced(q, 300);
-  const [filters, setFilters] = useState<Record<string, string>>({});
+  const [filters, setFilters] = useState<Record<string, string>>(INITIAL_VIEW.filters ?? {});
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(50);
+  const [perPage, setPerPage] = useState(INITIAL_VIEW.perPage ?? 50);
   const [hidden, setHidden] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem(HIDDEN_KEY) || '[]') as string[];
@@ -159,6 +180,44 @@ export function InventoryPage() {
   useEffect(() => {
     setPage(1);
   }, [debouncedQ, filters]);
+
+  const [views, setViews] = useState<SavedView[]>(() => readJson<SavedView[]>(VIEWS_KEY, []));
+  const [saveViewOpen, setSaveViewOpen] = useState(false);
+  const [viewName, setViewName] = useState('');
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(VIEW_KEY, JSON.stringify({ q: debouncedQ, filters, perPage }));
+    } catch {
+      /* storage may be unavailable */
+    }
+  }, [debouncedQ, filters, perPage]);
+
+  const persistViews = (next: SavedView[]) => {
+    setViews(next);
+    try {
+      localStorage.setItem(VIEWS_KEY, JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const applyView = (view: SavedView) => {
+    setQ(view.q);
+    setFilters(view.filters);
+    setPerPage(view.perPage);
+    setPage(1);
+  };
+
+  const saveCurrentView = () => {
+    const name = viewName.trim();
+    if (!name) return;
+    const entry: SavedView = { name, q: debouncedQ, filters, perPage };
+    persistViews([...views.filter((view) => view.name !== name), entry]);
+    setViewName('');
+    setSaveViewOpen(false);
+    toast.ok(`View "${name}" saved.`);
+  };
 
   const list = useQuery({
     queryKey: ['inventory', debouncedQ, filters, page, perPage],
@@ -261,6 +320,7 @@ export function InventoryPage() {
   });
 
   const toggleHidden = (h: string) => {
+    if (LOCKED_COLUMNS.includes(h)) return;
     setHidden((prev) => {
       const next = prev.includes(h) ? prev.filter((x) => x !== h) : [...prev, h];
       localStorage.setItem(HIDDEN_KEY, JSON.stringify(next));
@@ -268,7 +328,7 @@ export function InventoryPage() {
     });
   };
 
-  const visibleHeaders = headers.filter((h) => !hidden.includes(h));
+  const visibleHeaders = headers.filter((h) => LOCKED_COLUMNS.includes(h) || !hidden.includes(h));
   const columns: Column<Record<string, string>>[] = visibleHeaders.map((h) => ({
     key: h,
     label: labelOf(h),
@@ -334,7 +394,7 @@ export function InventoryPage() {
               <Input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Search inventoryÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦"
+                placeholder="Search inventory…"
                 style={{ paddingLeft: 32 }}
                 aria-label="Search inventory"
               />
@@ -367,6 +427,49 @@ export function InventoryPage() {
               className="btn btn-secondary btn-sm"
               content={
                 <>
+                  <Bookmark size={14} /> Views
+                </>
+              }
+              scroll
+              header={<div className="menu-label">Saved views</div>}
+              items={[
+                ...views.map((view) => ({
+                  label: (
+                    <span className="spread" style={{ gap: 12 }}>
+                      <span>{view.name}</span>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        className="btn btn-ghost btn-sm"
+                        title={`Delete ${view.name}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          persistViews(views.filter((item) => item.name !== view.name));
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key !== 'Enter' && event.key !== ' ') return;
+                          event.stopPropagation();
+                          persistViews(views.filter((item) => item.name !== view.name));
+                        }}
+                      >
+                        <X size={12} />
+                      </span>
+                    </span>
+                  ),
+                  keepOpen: true,
+                  onClick: () => applyView(view),
+                })),
+                ...(views.length ? [{ label: null }] : []),
+                {
+                  label: 'Save current view…',
+                  onClick: () => setSaveViewOpen(true),
+                },
+              ]}
+            />
+            <DropdownMenu
+              className="btn btn-secondary btn-sm"
+              content={
+                <>
                   <SlidersHorizontal size={14} /> Columns
                 </>
               }
@@ -376,7 +479,12 @@ export function InventoryPage() {
                 ...headers.map((h) => ({
                   label: (
                     <label className="checkbox" onClick={(e) => e.stopPropagation()}>
-                      <input type="checkbox" checked={!hidden.includes(h)} onChange={() => toggleHidden(h)} />
+                      <input
+                        type="checkbox"
+                        checked={!hidden.includes(h)}
+                        disabled={LOCKED_COLUMNS.includes(h)}
+                        onChange={() => toggleHidden(h)}
+                      />
                       {labelOf(h)}
                     </label>
                   ),
@@ -483,7 +591,7 @@ export function InventoryPage() {
             {headers.map((h) => (
               <div className="detail-item" key={h}>
                 <div className="detail-label">{labelOf(h)}</div>
-                <div className="detail-value">{selected[h] || <span className="muted">ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â</span>}</div>
+                <div className="detail-value">{selected[h] || <span className="muted">—</span>}</div>
               </div>
             ))}
           </div>
@@ -572,6 +680,31 @@ export function InventoryPage() {
             </label>
           ))}
         </div>
+      </Modal>
+
+      <Modal
+        open={saveViewOpen}
+        onClose={() => setSaveViewOpen(false)}
+        title="Save current view"
+        footer={
+          <>
+            <Button onClick={() => setSaveViewOpen(false)}>Cancel</Button>
+            <Button variant="primary" disabled={!viewName.trim()} onClick={saveCurrentView}>
+              Save view
+            </Button>
+          </>
+        }
+      >
+        <Field label="View name" hint="Search, filters and page size are saved together.">
+          <Input
+            value={viewName}
+            onChange={(event) => setViewName(event.target.value)}
+            placeholder="e.g. Apple — above 75 days"
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') saveCurrentView();
+            }}
+          />
+        </Field>
       </Modal>
     </div>
   );

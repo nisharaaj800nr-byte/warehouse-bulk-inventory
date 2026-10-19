@@ -108,8 +108,8 @@ export function Shell() {
             style={{ width: '100%', marginBottom: 8, padding: '4px 6px', borderRadius: 6 }}
           >
             <option value="en">English</option>
-            <option value="hi">Ã Â¤Â¹Ã Â¤Â¿Ã Â¤Â¨Ã Â¥ÂÃ Â¤Â¦Ã Â¥â‚¬</option>
-            <option value="gu">Ã Âªâ€”Ã Â«ÂÃ ÂªÅ“Ã ÂªÂ°Ã ÂªÂ¾Ã ÂªÂ¤Ã Â«â‚¬</option>
+            <option value="hi">हिन्दी</option>
+            <option value="gu">ગુજરાતી</option>
           </select>
           <Button
             variant="ghost"
@@ -126,7 +126,7 @@ export function Shell() {
       <div className="main">
         {isDemoMode() && (
           <div className="banner">
-            <FlaskConical size={14} /> Demo mode ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â sample data only. Sign out to exit.
+            <FlaskConical size={14} /> Demo mode — sample data only. Sign out to exit.
           </div>
         )}
         <header className="topbar">

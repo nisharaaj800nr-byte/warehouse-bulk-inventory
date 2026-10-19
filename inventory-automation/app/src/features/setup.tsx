@@ -116,7 +116,7 @@ export function SetupPage() {
           <div>
             <h2 style={{ margin: 0 }}>Bulk Repair setup</h2>
             <p className="muted" style={{ margin: 0 }}>
-              Step {step} of 3 ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ek baar setup, phir seedha app khulega.
+              Step {step} of 3 — ek baar setup, phir seedha app khulega.
             </p>
           </div>
         </div>
@@ -262,7 +262,7 @@ export function SetupPage() {
         </div>
 
         <p className="hint" style={{ marginTop: 12 }}>
-          Setup dobara badalna ho to: Settings ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Connection.
+          Setup dobara badalna ho to: Settings → Connection.
         </p>
       </div>
     </div>

@@ -189,7 +189,7 @@ export function ReportsPage() {
             {f}={v}
           </span>
         ) : (
-          <span className="muted">Ã¢â‚¬â€</span>
+          <span className="muted">—</span>
         );
       },
     },
@@ -198,7 +198,7 @@ export function ReportsPage() {
       label: 'Columns',
       render: (r) => (
         <span className="cell-clip" title={String(r['Report Columns'] ?? '')}>
-          {String(r['Report Columns'] ?? '') || 'Ã¢â‚¬â€'}
+          {String(r['Report Columns'] ?? '') || '—'}
         </span>
       ),
     },
@@ -261,7 +261,7 @@ export function ReportsPage() {
     {
       key: 'active',
       label: 'Active',
-      render: (r) => <Badge tone={String(r['Active'] ?? '') === 'ON' ? 'ok' : 'neutral'}>{String(r['Active'] ?? '') || 'Ã¢â‚¬â€'}</Badge>,
+      render: (r) => <Badge tone={String(r['Active'] ?? '') === 'ON' ? 'ok' : 'neutral'}>{String(r['Active'] ?? '') || '—'}</Badge>,
     },
     {
       key: 'actions',
@@ -409,7 +409,7 @@ export function ReportsPage() {
       <Modal
         open={!!genForm}
         onClose={() => setGenForm(null)}
-        title={'Generate Ã¢â‚¬â€ ' + (genForm?.name ?? '')}
+        title={'Generate — ' + (genForm?.name ?? '')}
         size="lg"
         footer={
           <>
@@ -495,7 +495,7 @@ export function ReportsPage() {
         <Field label="Template name">
           <Input value={tplForm.name} onChange={(e) => setTplForm((p) => ({ ...p, name: e.target.value }))} />
         </Field>
-        <Field label="Config JSON" hint="Advanced Ã¢â‚¬â€ structure depends on your template engine.">
+        <Field label="Config JSON" hint="Advanced — structure depends on your template engine.">
           <Textarea
             value={tplForm.configJson}
             onChange={(e) => setTplForm((p) => ({ ...p, configJson: e.target.value }))}

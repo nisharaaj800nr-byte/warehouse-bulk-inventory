@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 
 export type Lang = 'en' | 'hi' | 'gu';
 
-const KEY = '***';
+const KEY = 'br.lang';
 
 const DICT: Record<Exclude<Lang, 'en'>, Record<string, string>> = {
   hi: {

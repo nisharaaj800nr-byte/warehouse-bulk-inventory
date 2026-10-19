@@ -1,7 +1,7 @@
 /* API client for the Bulk Repair backend (code-api.gs v1.1).
 
    Transports:
-   - gas : google.script.run ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ runApi()            (when served by Apps Script)
+   - gas : google.script.run → runApi()            (when served by Apps Script)
    - http: POST JSON to the deployed /exec URL     (static hosting / dev)
    - demo: local fixtures, no network              (UI preview)
 
@@ -295,6 +295,8 @@ export interface DashboardData {
   reportsActive: number;
   byStatus?: { key: string; count: number }[];
   byAgeBucket?: { key: string; count: number }[];
+  byStatusBucket?: { key: string; count: number }[];
+  topBrands?: { key: string; count: number }[];
 }
 export interface InventoryListResult {
   rows: unknown[][];

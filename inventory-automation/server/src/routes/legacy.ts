@@ -223,12 +223,23 @@ export function legacyRouter(db: Db, sessionTtlHours: number, dbPath: string = '
           .prepare('SELECT row_number, field, message FROM import_errors ORDER BY id DESC LIMIT 8')
           .all() as unknown as Array<{ row_number: number; field: string; message: string }>;
 
-        const byStatus = db.prepare("SELECT COALESCE(status, '(empty)') AS key, COUNT(*) AS count FROM inventory GROUP BY key ORDER BY count DESC LIMIT 8").all() as unknown as Array<{ key: string; count: number }>;
-        const byAgeBucket = db.prepare("SELECT COALESCE(age_bucket, '(empty)') AS key, COUNT(*) AS count FROM inventory GROUP BY key ORDER BY count DESC LIMIT 8").all() as unknown as Array<{ key: string; count: number }>;
+        const groupCounts = (column: string) =>
+          db
+            .prepare(
+              `SELECT COALESCE(${column}, '(empty)') AS key, COUNT(*) AS count
+               FROM inventory GROUP BY key ORDER BY count DESC LIMIT 8`
+            )
+            .all() as unknown as Array<{ key: string; count: number }>;
+        const byStatus = groupCounts('status');
+        const byAgeBucket = groupCounts('age_bucket');
+        const byStatusBucket = groupCounts('status_bucket');
+        const topBrands = groupCounts('brand');
 
         return {
           byStatus: byStatus.map((row) => ({ key: row.key, count: Number(row.count) })),
           byAgeBucket: byAgeBucket.map((row) => ({ key: row.key, count: Number(row.count) })),
+          byStatusBucket: byStatusBucket.map((row) => ({ key: row.key, count: Number(row.count) })),
+          topBrands: topBrands.map((row) => ({ key: row.key, count: Number(row.count) })),
           inventoryCount: total,
           headers: [...INVENTORY_HEADERS],
           recentRuns: runs.map((run) => [run.kind, run.status, String(run.rows_ok), String(run.rows_failed), run.created_at]),

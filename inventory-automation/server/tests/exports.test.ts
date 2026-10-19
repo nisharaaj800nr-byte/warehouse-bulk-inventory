@@ -177,5 +177,7 @@ describe('google config + dashboard distributions', () => {
     expect(Array.isArray(response.body.data.byStatus)).toBe(true);
     expect(response.body.data.byStatus.length).toBeGreaterThan(0);
     expect(Array.isArray(response.body.data.byAgeBucket)).toBe(true);
+    expect(Array.isArray(response.body.data.byStatusBucket)).toBe(true);
+    expect(Array.isArray(response.body.data.topBrands)).toBe(true);
   });
 });

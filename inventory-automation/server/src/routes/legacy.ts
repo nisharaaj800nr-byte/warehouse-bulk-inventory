@@ -533,6 +533,100 @@ export function legacyRouter(db: Db, sessionTtlHours: number, dbPath: string = '
         };
       }
 
+      case 'auth.sessions': {
+        assertAdmin(role);
+        const rows = db
+          .prepare(
+            `SELECT s.id, u.email, u.role, s.created_at, s.last_seen_at, s.expires_at
+             FROM sessions s
+             JOIN users u ON u.id = s.user_id
+             WHERE s.revoked_at IS NULL AND s.expires_at > ?
+             ORDER BY COALESCE(s.last_seen_at, s.created_at) DESC
+             LIMIT 200`
+          )
+          .all(new Date().toISOString()) as unknown as Array<{
+          id: number;
+          email: string;
+          role: Role;
+          created_at: string;
+          last_seen_at: string | null;
+          expires_at: string;
+        }>;
+        return {
+          sessions: rows.map((row) => ({
+            id: Number(row.id),
+            email: row.email,
+            role: row.role,
+            createdAt: row.created_at,
+            lastSeenAt: row.last_seen_at ?? '',
+            expiresAt: row.expires_at
+          }))
+        };
+      }
+
+      case 'auth.revokeSession': {
+        assertAdmin(role);
+        const sessionId = Number(params.id);
+        if (!Number.isInteger(sessionId) || sessionId < 1) {
+          throw new ApiError(400, 'BAD_REQUEST', 'A valid session id is required');
+        }
+        const result = db
+          .prepare('UPDATE sessions SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL')
+          .run(new Date().toISOString(), sessionId);
+        writeAudit(db, {
+          actorEmail: email,
+          action: 'SESSION_REVOKED',
+          entity: 'session',
+          entityId: sessionId,
+          ip
+        });
+        return { revoked: Number(result.changes) > 0 };
+      }
+
+      case 'auth.revokeSessions': {
+        assertAdmin(role);
+        const target = String(params.email ?? '').trim().toLowerCase();
+        if (!target) throw new ApiError(400, 'BAD_REQUEST', 'email is required');
+        const targetUser = db.prepare('SELECT id, email FROM users WHERE email = ?').get(target) as
+          | { id: number; email: string }
+          | undefined;
+        if (!targetUser) throw new ApiError(404, 'NOT_FOUND', `User ${target} not found`);
+        const result = db
+          .prepare('UPDATE sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL')
+          .run(new Date().toISOString(), targetUser.id);
+        writeAudit(db, {
+          actorEmail: email,
+          action: 'SESSIONS_REVOKED',
+          entity: 'user',
+          entityId: targetUser.id,
+          details: { email: targetUser.email, count: Number(result.changes) },
+          ip
+        });
+        return { revoked: Number(result.changes) };
+      }
+
+      case 'auth.loginHistory': {
+        assertAdmin(role);
+        const limit = Math.min(500, Math.max(1, Number(params.limit ?? 100) || 100));
+        const rows = db
+          .prepare(
+            `SELECT at, actor_email, action, ip
+             FROM audit_log
+             WHERE action IN ('LOGIN_OK','LOGIN_FAILED','LOGIN_LOCKED','LOGIN_BLOCKED_LOCKED','LOGOUT')
+             ORDER BY at DESC
+             LIMIT ?`
+          )
+          .all(limit) as unknown as Array<{ at: string; actor_email: string | null; action: string; ip: string | null }>;
+        return {
+          entries: rows.map((row) => ({
+            at: row.at,
+            email: row.actor_email ?? '',
+            event: row.action,
+            ip: row.ip ?? ''
+          }))
+        };
+      }
+
       default:
         return dispatchExtended(db, action, params, role, email, ip, sessionTtlHours, dbPath);
     }

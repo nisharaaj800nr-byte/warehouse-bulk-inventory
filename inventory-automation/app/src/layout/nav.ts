@@ -6,6 +6,7 @@ import {
   Database,
   FileText,
   History,
+  KeyRound,
   LayoutDashboard,
   Settings,
   ShieldCheck,
@@ -56,6 +57,7 @@ export const NAV_GROUPS: NavGroup[] = [
     group: 'Administration',
     items: [
       { to: '/users', label: 'Users & Security', icon: ShieldCheck, min: 'ADMIN' },
+      { to: '/sessions', label: 'Sessions & Audit', icon: KeyRound, min: 'ADMIN' },
       { to: '/activity', label: 'Activity & Audit', icon: History },
       { to: '/settings', label: 'Settings', icon: Settings },
     ],

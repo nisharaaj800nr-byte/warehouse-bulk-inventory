@@ -332,6 +332,22 @@ export interface ImportCommitResult {
   errorSample: { row: number; errors: string[] }[];
 }
 
+export interface SessionRecord {
+  id: number;
+  email: string;
+  role: Role;
+  createdAt: string;
+  lastSeenAt: string;
+  expiresAt: string;
+}
+
+export interface LoginEvent {
+  at: string;
+  email: string;
+  event: string;
+  ip: string;
+}
+
 export const api = {
   health: () => callApi<Record<string, unknown>>('health'),
   login: (email: string, password: string, rememberMe: boolean) =>
@@ -406,6 +422,10 @@ export const api = {
     callApi<{ saved: boolean; updated: boolean; passwordSet: boolean }>('users.save', params),
   resetPassword: (email: string, newPassword: string) =>
     callApi<{ reset: boolean }>('auth.resetPassword', { email, newPassword }),
+  authSessions: () => callApi<{ sessions: SessionRecord[] }>('auth.sessions'),
+  revokeSession: (id: number) => callApi<{ revoked: boolean }>('auth.revokeSession', { id }),
+  revokeUserSessions: (email: string) => callApi<{ revoked: number }>('auth.revokeSessions', { email }),
+  loginHistory: (limit = 100) => callApi<{ entries: LoginEvent[] }>('auth.loginHistory', { limit }),
   securityList: () => callApi<Row[]>('security.list'),
   securityUnlock: (sheet: string) => callApi<unknown>('security.unlock', { sheet }),
   securityLock: (sheet: string) => callApi<unknown>('security.lock', { sheet }),

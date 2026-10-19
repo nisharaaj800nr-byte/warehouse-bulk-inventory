@@ -2,6 +2,7 @@
 import { type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { cx } from '../lib/utils';
+import { translate } from '../lib/i18n';
 import { EmptyState, Skeleton } from './base';
 
 export interface Column<T> {
@@ -48,7 +49,7 @@ export function DataTable<T>({
           <tr>
             {columns.map((c) => (
               <th key={c.key} style={c.width ? { width: c.width } : undefined} className={cx(c.align === 'right' && 'num')}>
-                {c.label}
+                {typeof c.label === 'string' ? translate(c.label) : c.label}
               </th>
             ))}
           </tr>

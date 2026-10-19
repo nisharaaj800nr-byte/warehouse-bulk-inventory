@@ -8,6 +8,7 @@ import {
 } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { cx } from '../lib/utils';
+import { translate } from '../lib/i18n';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
@@ -38,7 +39,7 @@ export function Button({
       {...rest}
     >
       {loading ? <Spinner size={size === 'sm' ? 12 : 14} /> : icon}
-      {children}
+      {typeof children === 'string' ? translate(children) : children}
     </button>
   );
 }
@@ -62,7 +63,7 @@ export function Field({
 }) {
   return (
     <div className={cx('field', span2 && 'span2')}>
-      {label && <label className="label">{label}</label>}
+      {label && <label className="label">{translate(label)}</label>}
       {children}
       {error ? <div className="field-error">{error}</div> : hint ? <div className="hint">{hint}</div> : null}
     </div>
@@ -160,7 +161,7 @@ export function Card({
     <div className={cx('card', className)}>
       {hasHead && (
         <div className="card-head" style={paddedHeader ? undefined : { padding: '11px 14px' }}>
-          <div className="card-title">{title}</div>
+          <div className="card-title">{typeof title === 'string' ? translate(title) : title}</div>
           {actions}
         </div>
       )}
@@ -186,9 +187,9 @@ export function StatCard({
   return (
     <div className={cx('stat', tone === 'warn' && 'warn', tone === 'danger' && 'danger')}>
       <div className="grow">
-        <div className="stat-label">{label}</div>
+        <div className="stat-label">{translate(label)}</div>
         <div className="stat-value">{value}</div>
-        {sub && <div className="stat-sub">{sub}</div>}
+        {sub && <div className="stat-sub">{translate(sub)}</div>}
       </div>
       {icon && <div className="stat-icon">{icon}</div>}
     </div>
@@ -221,8 +222,8 @@ export function EmptyState({
   return (
     <div className="empty">
       {icon && <div className="empty-icon">{icon}</div>}
-      <div className="empty-title">{title}</div>
-      {hint && <div>{hint}</div>}
+      <div className="empty-title">{translate(title)}</div>
+      {hint && <div>{translate(hint)}</div>}
       {action && <div style={{ marginTop: 10 }}>{action}</div>}
     </div>
   );
@@ -256,8 +257,8 @@ export function PageHeader({
   return (
     <div className="page-head">
       <div>
-        <h1 className="page-title">{title}</h1>
-        {subtitle && <div className="page-sub">{subtitle}</div>}
+        <h1 className="page-title">{translate(title)}</h1>
+        {subtitle && <div className="page-sub">{translate(subtitle)}</div>}
       </div>
       {actions && <div className="page-actions">{actions}</div>}
     </div>

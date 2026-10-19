@@ -12,6 +12,7 @@ import { MappingPage } from '../features/mapping';
 import { RulesPage } from '../features/rules';
 import { AlertsPage } from '../features/alerts';
 import { UsersPage } from '../features/users';
+import { SessionsPage } from '../features/sessions';
 import { ActivityPage } from '../features/activity';
 import { SettingsPage } from '../features/settings';
 import { AssistantPage } from '../features/assistant';
@@ -24,7 +25,7 @@ export function Splash() {
   return (
     <div className="splash">
       <div className="splash-logo">BR</div>
-      <div>Loading portalï¿½?ï¿½</div>
+      <div>Loading portal…</div>
     </div>
   );
 }
@@ -103,6 +104,14 @@ export function AppRoutes() {
           element={
             <RequireRole min="ADMIN">
               <UsersPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="sessions"
+          element={
+            <RequireRole min="ADMIN">
+              <SessionsPage />
             </RequireRole>
           }
         />

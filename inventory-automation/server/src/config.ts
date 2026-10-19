@@ -18,16 +18,30 @@ function intFromEnv(value: string | undefined, fallback: number, name: string, m
   return parsed;
 }
 
-export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
-  const dbPathRaw = env.DB_PATH && env.DB_PATH.trim() !== '' ? env.DB_PATH.trim() : './data/bulkrepair.db';
+function tryLoadEnv(): void {
+  try {
+    process.loadEnvFile?.();
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException)?.code !== 'ENOENT') {
+      // Ignore if .env is missing; rethrow unexpected file system errors
+    }
+  }
+}
+
+export function loadConfig(env?: NodeJS.ProcessEnv): Config {
+  if (!env) {
+    tryLoadEnv();
+  }
+  const activeEnv = env ?? process.env;
+  const dbPathRaw = activeEnv.DB_PATH && activeEnv.DB_PATH.trim() !== '' ? activeEnv.DB_PATH.trim() : './data/bulkrepair.db';
   const dbPath = dbPathRaw === ':memory:' ? dbPathRaw : path.resolve(process.cwd(), dbPathRaw);
 
   return {
-    port: intFromEnv(env.PORT, 5000, 'PORT', 1, 65535),
-    host: env.HOST && env.HOST.trim() !== '' ? env.HOST.trim() : '0.0.0.0',
+    port: intFromEnv(activeEnv.PORT, 5050, 'PORT', 1, 65535),
+    host: activeEnv.HOST && activeEnv.HOST.trim() !== '' ? activeEnv.HOST.trim() : '0.0.0.0',
     dbPath,
-    sessionTtlHours: intFromEnv(env.SESSION_TTL_HOURS, 168, 'SESSION_TTL_HOURS', 1, 24 * 365),
-    logLevel: env.LOG_LEVEL && env.LOG_LEVEL.trim() !== '' ? env.LOG_LEVEL.trim() : 'info',
-    env: env.NODE_ENV && env.NODE_ENV.trim() !== '' ? env.NODE_ENV.trim() : 'production'
+    sessionTtlHours: intFromEnv(activeEnv.SESSION_TTL_HOURS, 168, 'SESSION_TTL_HOURS', 1, 24 * 365),
+    logLevel: activeEnv.LOG_LEVEL && activeEnv.LOG_LEVEL.trim() !== '' ? activeEnv.LOG_LEVEL.trim() : 'info',
+    env: activeEnv.NODE_ENV && activeEnv.NODE_ENV.trim() !== '' ? activeEnv.NODE_ENV.trim() : 'production'
   };
 }

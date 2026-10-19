@@ -108,163 +108,197 @@ export function SetupPage() {
     }
   }
 
+  const steps = [
+    { number: 1, title: 'Backend', detail: 'Where your data lives' },
+    { number: 2, title: 'Google Sheet', detail: 'Optional quick link' },
+    { number: 3, title: 'Owner account', detail: 'Sign in or create' }
+  ];
+
   return (
-    <div className="center-page" style={{ padding: 24 }}>
-      <div style={{ width: '100%', maxWidth: 720 }}>
-        <div className="row" style={{ gap: 10, marginBottom: 14 }}>
-          <div className="splash-logo">BR</div>
-          <div>
-            <h2 style={{ margin: 0 }}>Bulk Repair setup</h2>
-            <p className="muted" style={{ margin: 0 }}>
-              Step {step} of 3 — ek baar setup, phir seedha app khulega.
+    <div className="setup">
+      <aside className="setup-brand">
+        <div className="splash-logo">BR</div>
+        <h2>Bulk Repair</h2>
+        <p>Inventory operations for repair teams — imports, ageing rules, reports and audit trails in one place.</p>
+        <ol className="setup-steps">
+          {steps.map((item) => (
+            <li
+              key={item.number}
+              className={step === item.number ? 'active' : step > item.number ? 'done' : ''}
+            >
+              <span className="step-dot">{step > item.number ? '✓' : item.number}</span>
+              <span>
+                <strong>{item.title}</strong>
+                {item.detail}
+              </span>
+            </li>
+          ))}
+        </ol>
+      </aside>
+
+      <main className="setup-panel">
+        <div className="setup-inner">
+          <div className="setup-head">
+            <span className="eyebrow">Setup · step {step} of 3</span>
+            <h1>
+              {step === 1 && 'Choose your backend'}
+              {step === 2 && 'Link a Google Sheet'}
+              {step === 3 && (backend === 'local' ? 'Create the owner account' : 'Sign in')}
+            </h1>
+            <p>
+              {step === 1 && 'Pick where inventory data should live. You can change this later in Settings.'}
+              {step === 2 && 'Optional: save the sheet used by your Apps Script deployment for quick access.'}
+              {step === 3 && 'One-time setup — after this the app opens straight into the dashboard.'}
             </p>
           </div>
-        </div>
 
-        {step === 1 && (
-          <Card title="1. Where should the backend run?">
-            <div className="stack" style={{ gap: 12 }}>
-              <button
-                type="button"
-                className={`option-card${backend === 'local' ? ' selected' : ''}`}
-                onClick={() => setBackend('local')}
-                style={{ textAlign: 'left', padding: 14, borderRadius: 10, cursor: 'pointer' }}
-              >
-                <div className="row" style={{ gap: 8 }}>
-                  <HardDrive size={18} />
-                  <strong>This computer (offline)</strong>
-                  {backend === 'local' && <Badge tone="ok">selected</Badge>}
+          {step === 1 && (
+            <Card title="Backend">
+              <div className="stack" style={{ gap: 12 }}>
+                <button
+                  type="button"
+                  className={`option-card${backend === 'local' ? ' selected' : ''}`}
+                  onClick={() => setBackend('local')}
+                  style={{ textAlign: 'left', padding: 16, borderRadius: 12, cursor: 'pointer' }}
+                >
+                  <div className="spread">
+                    <div className="row" style={{ gap: 9 }}>
+                      <HardDrive size={18} />
+                      <strong>This computer (offline)</strong>
+                    </div>
+                    {backend === 'local' && <Badge tone="ok">Selected</Badge>}
+                  </div>
+                  <p className="hint" style={{ margin: '7px 0 0' }}>
+                    Local server and database. No internet required. Fastest.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  className={`option-card${backend === 'gas' ? ' selected' : ''}`}
+                  onClick={() => setBackend('gas')}
+                  style={{ textAlign: 'left', padding: 16, borderRadius: 12, cursor: 'pointer' }}
+                >
+                  <div className="spread">
+                    <div className="row" style={{ gap: 9 }}>
+                      <Cloud size={18} />
+                      <strong>Google Apps Script / Google Sheets</strong>
+                    </div>
+                    {backend === 'gas' && <Badge tone="ok">Selected</Badge>}
+                  </div>
+                  <p className="hint" style={{ margin: '7px 0 0' }}>
+                    Data stays in Google Sheets. Requires internet. Works from your phone anywhere.
+                  </p>
+                </button>
+
+                {backend === 'gas' && (
+                  <Field label="Apps Script web-app URL (/exec)">
+                    <Input
+                      value={url}
+                      onChange={(event) => setUrl(event.target.value)}
+                      placeholder="https://script.google.com/macros/s/.../exec"
+                    />
+                  </Field>
+                )}
+
+                <div className="row" style={{ gap: 10 }}>
+                  <Button onClick={testConnection} loading={busy} icon={<Link2 size={14} />}>
+                    Test connection
+                  </Button>
+                  {probe === 'ok' && (
+                    <span style={{ color: 'var(--ok)' }}>
+                      <CheckCircle2 size={16} /> Connected
+                    </span>
+                  )}
+                  {probe === 'fail' && (
+                    <span style={{ color: 'var(--danger)' }}>
+                      <XCircle size={16} /> Not reachable
+                    </span>
+                  )}
                 </div>
-                <p className="hint" style={{ margin: '6px 0 0' }}>
-                  Local server and database. No internet required. Fastest.
-                </p>
-              </button>
+              </div>
+            </Card>
+          )}
 
-              <button
-                type="button"
-                className={`option-card${backend === 'gas' ? ' selected' : ''}`}
-                onClick={() => setBackend('gas')}
-                style={{ textAlign: 'left', padding: 14, borderRadius: 10, cursor: 'pointer' }}
-              >
-                <div className="row" style={{ gap: 8 }}>
-                  <Cloud size={18} />
-                  <strong>Google Apps Script / Google Sheets</strong>
-                  {backend === 'gas' && <Badge tone="ok">selected</Badge>}
-                </div>
-                <p className="hint" style={{ margin: '6px 0 0' }}>
-                  Data stays in Google Sheets. Requires internet. Works from your phone anywhere.
-                </p>
-              </button>
-
-              {backend === 'gas' && (
-                <Field label="Apps Script web-app URL (/exec)">
+          {step === 2 && (
+            <Card title="Google Sheet (optional)">
+              <div className="stack" style={{ gap: 12 }}>
+                <Field label="Sheet link">
                   <Input
-                    value={url}
-                    onChange={(event) => setUrl(event.target.value)}
-                    placeholder="https://script.google.com/macros/s/.../exec"
+                    value={sheet}
+                    onChange={(event) => setSheet(event.target.value)}
+                    placeholder="https://docs.google.com/spreadsheets/d/..."
                   />
                 </Field>
-              )}
-
-              <div className="row" style={{ gap: 8 }}>
-                <Button onClick={testConnection} loading={busy} icon={<Link2 size={14} />}>
-                  Test connection
-                </Button>
-                {probe === 'ok' && (
-                  <span style={{ color: 'var(--ok)' }}>
-                    <CheckCircle2 size={16} /> Connected
-                  </span>
-                )}
-                {probe === 'fail' && (
-                  <span style={{ color: 'var(--danger)' }}>
-                    <XCircle size={16} /> Not reachable
-                  </span>
-                )}
+                <p className="hint" style={{ margin: 0 }}>
+                  In Apps Script mode, data lives in that sheet. This link is only saved for quick access
+                  (you can change it in Settings).
+                </p>
               </div>
-            </div>
-          </Card>
-        )}
+            </Card>
+          )}
 
-        {step === 2 && (
-          <Card title="2. Google Sheet (optional)">
-            <div className="stack" style={{ gap: 12 }}>
-              <Field label="Sheet link">
-                <Input
-                  value={sheet}
-                  onChange={(event) => setSheet(event.target.value)}
-                  placeholder="https://docs.google.com/spreadsheets/d/..."
-                />
-              </Field>
-              <p className="hint" style={{ margin: 0 }}>
-                In Apps Script mode, data lives in that sheet. This link is only saved for quick access
-                (you can change it in Settings).
-              </p>
-            </div>
-          </Card>
-        )}
-
-        {step === 3 && (
-          <Card title={backend === 'local' ? '3. Create the owner account' : '3. Sign in'}>
-            <div className="stack" style={{ gap: 12 }}>
-              <Field label="Email">
-                <Input value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="username" />
-              </Field>
-              <Field label={backend === 'local' ? 'Password (8+ characters)' : 'Password'}>
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  autoComplete={backend === 'local' ? 'new-password' : 'current-password'}
-                />
-              </Field>
-              {backend === 'local' && (
-                <Field label="Confirm password">
+          {step === 3 && (
+            <Card title={backend === 'local' ? 'Owner account' : 'Account'}>
+              <div className="stack" style={{ gap: 12 }}>
+                <Field label="Email">
+                  <Input value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="username" />
+                </Field>
+                <Field label={backend === 'local' ? 'Password (10+ characters, letters and numbers)' : 'Password'}>
                   <Input
                     type="password"
-                    value={confirm}
-                    onChange={(event) => setConfirm(event.target.value)}
-                    autoComplete="new-password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    autoComplete={backend === 'local' ? 'new-password' : 'current-password'}
                   />
                 </Field>
-              )}
-              <p className="hint" style={{ margin: 0 }}>
-                {backend === 'local'
-                  ? 'This account will be created as OWNER on the local server of this computer.'
-                  : 'Use the same email and password as your Apps Script deployment.'}
-              </p>
-              {backend === 'gas' && <GoogleSignIn onError={setError} />}
-            </div>
-          </Card>
-        )}
+                {backend === 'local' && (
+                  <Field label="Confirm password">
+                    <Input
+                      type="password"
+                      value={confirm}
+                      onChange={(event) => setConfirm(event.target.value)}
+                      autoComplete="new-password"
+                    />
+                  </Field>
+                )}
+                <p className="hint" style={{ margin: 0 }}>
+                  {backend === 'local'
+                    ? 'This account will be created as OWNER on the local server of this computer.'
+                    : 'Use the same email and password as your Apps Script deployment.'}
+                </p>
+                {backend === 'gas' && <GoogleSignIn onError={setError} />}
+              </div>
+            </Card>
+          )}
 
-        {error && (
-          <p style={{ color: 'var(--danger)', marginTop: 10 }}>
-            <XCircle size={14} /> {error}
-          </p>
-        )}
+          {error && (
+            <p style={{ color: 'var(--danger)', marginTop: 12 }}>
+              <XCircle size={14} /> {error}
+            </p>
+          )}
 
-        <div className="row" style={{ gap: 8, marginTop: 14 }}>
-          {step > 1 && (
-            <Button onClick={() => setStep((current) => Math.max(1, current - 1))} disabled={busy}>
-              Back
-            </Button>
-          )}
-          {step < 3 && (
-            <Button variant="primary" onClick={next}>
-              Next
-            </Button>
-          )}
-          {step === 3 && (
-            <Button variant="primary" onClick={finish} loading={busy} icon={busy ? <Loader2 size={14} /> : undefined}>
-              Finish setup
-            </Button>
-          )}
+          <div className="setup-foot">
+            {step > 1 && (
+              <Button onClick={() => setStep((current) => Math.max(1, current - 1))} disabled={busy}>
+                Back
+              </Button>
+            )}
+            {step < 3 && (
+              <Button variant="primary" onClick={next}>
+                Continue
+              </Button>
+            )}
+            {step === 3 && (
+              <Button variant="primary" onClick={finish} loading={busy} icon={busy ? <Loader2 size={14} /> : undefined}>
+                Finish setup
+              </Button>
+            )}
+          </div>
+
+          <p className="hint setup-note">To change the setup later: Settings → Connection.</p>
         </div>
-
-        <p className="hint" style={{ marginTop: 12 }}>
-          To change the setup later: Settings → Connection.
-        </p>
-      </div>
+      </main>
     </div>
   );
 }

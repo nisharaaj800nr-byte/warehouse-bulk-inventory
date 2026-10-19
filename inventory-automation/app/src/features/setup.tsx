@@ -122,7 +122,7 @@ export function SetupPage() {
         </div>
 
         {step === 1 && (
-          <Card title="1. Backend kahan chalega?">
+          <Card title="1. Where should the backend run?">
             <div className="stack" style={{ gap: 12 }}>
               <button
                 type="button"
@@ -136,7 +136,7 @@ export function SetupPage() {
                   {backend === 'local' && <Badge tone="ok">selected</Badge>}
                 </div>
                 <p className="hint" style={{ margin: '6px 0 0' }}>
-                  Local server + local database. Internet ki zarurat nahi. Fastest.
+                  Local server and database. No internet required. Fastest.
                 </p>
               </button>
 
@@ -152,7 +152,7 @@ export function SetupPage() {
                   {backend === 'gas' && <Badge tone="ok">selected</Badge>}
                 </div>
                 <p className="hint" style={{ margin: '6px 0 0' }}>
-                  Data Google Sheets me rahega. Internet chahiye. Phone se kahin se bhi chalega.
+                  Data stays in Google Sheets. Requires internet. Works from your phone anywhere.
                 </p>
               </button>
 
@@ -196,15 +196,15 @@ export function SetupPage() {
                 />
               </Field>
               <p className="hint" style={{ margin: 0 }}>
-                Apps Script mode me data khud usi sheet me jata hai. Ye link sirf jaldi kholne ke liye
-                save hota hai (Settings me bhi badal sakte ho).
+                In Apps Script mode, data lives in that sheet. This link is only saved for quick access
+                (you can change it in Settings).
               </p>
             </div>
           </Card>
         )}
 
         {step === 3 && (
-          <Card title={backend === 'local' ? '3. Owner account banao' : '3. Sign in'}>
+          <Card title={backend === 'local' ? '3. Create the owner account' : '3. Sign in'}>
             <div className="stack" style={{ gap: 12 }}>
               <Field label="Email">
                 <Input value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="username" />
@@ -229,8 +229,8 @@ export function SetupPage() {
               )}
               <p className="hint" style={{ margin: 0 }}>
                 {backend === 'local'
-                  ? 'Ye account is computer ke local server pe OWNER ke roop me banega.'
-                  : 'Wahi email/password jo aapke Apps Script deployment me hai.'}
+                  ? 'This account will be created as OWNER on the local server of this computer.'
+                  : 'Use the same email and password as your Apps Script deployment.'}
               </p>
               {backend === 'gas' && <GoogleSignIn onError={setError} />}
             </div>
@@ -262,7 +262,7 @@ export function SetupPage() {
         </div>
 
         <p className="hint" style={{ marginTop: 12 }}>
-          Setup dobara badalna ho to: Settings → Connection.
+          To change the setup later: Settings → Connection.
         </p>
       </div>
     </div>

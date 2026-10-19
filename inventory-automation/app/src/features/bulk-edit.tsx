@@ -111,7 +111,7 @@ export function BulkEditButton({ onDone }: { onDone?: () => void }) {
           </div>
 
           <p className="hint" style={{ margin: 0 }}>
-            Sirf wahi field badlegi jo aap chunte ho; baaki data waisa hi rahega. Ye action audit log me record hota hai.
+            Only the fields you select will change; all other data stays as it is. This action is recorded in the audit log.
           </p>
         </div>
       </Modal>

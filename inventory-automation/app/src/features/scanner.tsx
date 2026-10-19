@@ -45,8 +45,8 @@ export function ScannerModal({
       } catch (err) {
         setError(
           err instanceof Error
-            ? `${err.message}. Camera permission allow karo, aur HTTPS/localhost se kholo.`
-            : 'Camera start nahi ho paya.'
+            ? `${err.message}. Allow camera permission and open the app over HTTPS or localhost.`
+            : 'Unable to start the camera.'
         );
       } finally {
         setStarting(false);
@@ -91,14 +91,14 @@ export function ScannerModal({
           />
         </div>
 
-        {starting && <p className="hint">Camera start ho raha hai…</p>}
+        {starting && <p className="hint">Starting camera…</p>}
         {error && (
           <p style={{ color: 'var(--danger)', margin: 0 }}>
             <XCircle size={14} /> {error}
           </p>
         )}
         <p className="hint" style={{ margin: 0 }}>
-          Barcode ko frame ke andar rakho. Detect hote hi search apne aap bhar jayega.
+          Place the barcode inside the frame. The search fills automatically when it is detected.
         </p>
         <div className="row" style={{ gap: 8 }}>
           <Button icon={<Camera size={14} />} onClick={onClose}>

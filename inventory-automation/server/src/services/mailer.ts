@@ -65,7 +65,7 @@ export async function sendMailWithAttachment(
     throw new ApiError(
       400,
       'VALIDATION_ERROR',
-      'Email is not configured. Settings me SMTP_HOST, SMTP_FROM aur SMTP credentials bharo.'
+      'Email is not configured. Set SMTP_HOST, SMTP_FROM and the SMTP credentials in Settings.'
     );
   }
 
@@ -95,7 +95,7 @@ export async function sendTestEmail(db: Db, overrideTo?: string): Promise<{ sent
     throw new ApiError(
       400,
       'VALIDATION_ERROR',
-      'Email is not configured. Settings me SMTP_HOST, SMTP_FROM aur ALERT_EMAIL_TO bharo.'
+      'Email is not configured. Set SMTP_HOST, SMTP_FROM and ALERT_EMAIL_TO in Settings.'
     );
   }
 

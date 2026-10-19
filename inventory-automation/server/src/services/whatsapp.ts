@@ -33,7 +33,7 @@ export async function sendWhatsAppTest(db: Db, overrideTo?: string): Promise<{ s
     throw new ApiError(
       400,
       'VALIDATION_ERROR',
-      'WhatsApp is not configured. Settings me WHATSAPP_TOKEN, WHATSAPP_PHONE_ID aur ALERT_WHATSAPP_TO bharo.'
+      'WhatsApp is not configured. Set WHATSAPP_TOKEN, WHATSAPP_PHONE_ID and ALERT_WHATSAPP_TO in Settings.'
     );
   }
 

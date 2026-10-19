@@ -10,9 +10,9 @@ import { useToast } from '../ui/overlay';
 import { useAuth } from './auth';
 
 const EXAMPLES = [
-  'aaj ka inventory summary banao',
-  '75 days se upar wale Apple devices dikhao',
-  'Bin Storage me kitne devices hain',
+  'Show today\'s inventory summary',
+  'List Apple devices older than 75 days',
+  'How many devices are in Bin Storage?',
 ];
 
 export function AssistantPage() {
@@ -49,7 +49,7 @@ export function AssistantPage() {
         <Textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder='e.g. "75 days se upar wale Apple devices dikhao"'
+          placeholder='e.g. "List Apple devices older than 75 days"'
           style={{ minHeight: 110 }}
         />
         <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: 'wrap' }}>

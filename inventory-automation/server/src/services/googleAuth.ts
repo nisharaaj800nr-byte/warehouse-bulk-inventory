@@ -60,7 +60,7 @@ export async function authenticateWithGoogle(
     throw new ApiError(
       400,
       'VALIDATION_ERROR',
-      'Google login is not configured. Settings me GOOGLE_CLIENT_ID bharo (Google Cloud Console se OAuth Client ID).'
+      'Google login is not configured. Set GOOGLE_CLIENT_ID in Settings (OAuth Client ID from Google Cloud Console).'
     );
   }
 

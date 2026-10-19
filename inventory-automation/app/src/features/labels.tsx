@@ -229,14 +229,14 @@ export function LabelsPage() {
           </label>
         </div>
         <span className="hint" style={{ display: 'block', marginTop: 8 }}>
-          Print dialog me margins "None" aur scale 100% rakho.
+          In the print dialog, set margins to "None" and scale to 100%.
         </span>
       </Card>
 
       {list.isError && <ErrorPanel message={errorMessage(list.error)} onRetry={() => void list.refetch()} />}
 
       {items.length === 0 ? (
-        <EmptyState title="No labels" hint="Inventory me items add karo, phir labels print honge." />
+        <EmptyState title="No labels" hint="Add items to inventory, then print their labels." />
       ) : (
         <div
           className="label-grid"

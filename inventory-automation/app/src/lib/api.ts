@@ -332,6 +332,15 @@ export interface ImportCommitResult {
   errorSample: { row: number; errors: string[] }[];
 }
 
+export interface StockMovement {
+  id: number;
+  at: string;
+  action: string;
+  field: string | null;
+  oldValue: string | null;
+  newValue: string | null;
+}
+
 export interface SessionRecord {
   id: number;
   email: string;
@@ -364,6 +373,8 @@ export const api = {
     callApi<{ csv: string; rows: number }>('inventory.export', { columns: columns.join(',') }),
   inventorySave: (item: Record<string, string>) =>
     callApi<{ ok: boolean; barcode: string; mode: string }>('inventory.save', { item }),
+  inventoryHistory: (barcode: string, limit = 50) =>
+    callApi<{ barcode: string; movements: StockMovement[] }>('inventory.history', { barcode, limit }),
   inventoryDelete: (barcode: string) =>
     callApi<{ ok: boolean; barcode: string }>('inventory.delete', { barcode }),
   trends: () => callApi<SheetData>('trends.list'),

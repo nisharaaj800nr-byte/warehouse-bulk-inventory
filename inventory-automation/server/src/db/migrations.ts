@@ -229,5 +229,68 @@ CREATE TABLE settings (
 
 CREATE INDEX idx_import_files_created ON import_files(created_at);
 `
+  },
+  {
+    version: 4,
+    name: 'stock_movements',
+    sql: `
+CREATE TABLE stock_movements (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  barcode TEXT NOT NULL,
+  at TEXT NOT NULL,
+  action TEXT NOT NULL CHECK (action IN ('INSERT','UPDATE','DELETE')),
+  field TEXT,
+  old_value TEXT,
+  new_value TEXT
+);
+
+CREATE INDEX idx_movements_barcode_at ON stock_movements(barcode, at DESC);
+
+CREATE TRIGGER trg_inventory_insert AFTER INSERT ON inventory
+BEGIN
+  INSERT INTO stock_movements (barcode, at, action)
+  VALUES (NEW.barcode, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'INSERT');
+END;
+
+CREATE TRIGGER trg_inventory_delete AFTER DELETE ON inventory
+BEGIN
+  INSERT INTO stock_movements (barcode, at, action)
+  VALUES (OLD.barcode, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'DELETE');
+END;
+
+CREATE TRIGGER trg_inventory_update AFTER UPDATE ON inventory
+BEGIN
+  INSERT INTO stock_movements (barcode, at, action, field, old_value, new_value)
+  SELECT OLD.barcode, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'UPDATE', 'status', OLD.status, NEW.status
+  WHERE OLD.status IS NOT NEW.status;
+  INSERT INTO stock_movements (barcode, at, action, field, old_value, new_value)
+  SELECT OLD.barcode, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'UPDATE', 'status_bucket', OLD.status_bucket, NEW.status_bucket
+  WHERE OLD.status_bucket IS NOT NEW.status_bucket;
+  INSERT INTO stock_movements (barcode, at, action, field, old_value, new_value)
+  SELECT OLD.barcode, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'UPDATE', 'location', OLD.location, NEW.location
+  WHERE OLD.location IS NOT NEW.location;
+  INSERT INTO stock_movements (barcode, at, action, field, old_value, new_value)
+  SELECT OLD.barcode, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'UPDATE', 'bin_bucket', OLD.bin_bucket, NEW.bin_bucket
+  WHERE OLD.bin_bucket IS NOT NEW.bin_bucket;
+  INSERT INTO stock_movements (barcode, at, action, field, old_value, new_value)
+  SELECT OLD.barcode, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'UPDATE', 'priority', OLD.priority, NEW.priority
+  WHERE OLD.priority IS NOT NEW.priority;
+  INSERT INTO stock_movements (barcode, at, action, field, old_value, new_value)
+  SELECT OLD.barcode, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'UPDATE', 'stock_age', OLD.stock_age, NEW.stock_age
+  WHERE OLD.stock_age IS NOT NEW.stock_age;
+  INSERT INTO stock_movements (barcode, at, action, field, old_value, new_value)
+  SELECT OLD.barcode, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'UPDATE', 'age_bucket', OLD.age_bucket, NEW.age_bucket
+  WHERE OLD.age_bucket IS NOT NEW.age_bucket;
+  INSERT INTO stock_movements (barcode, at, action, field, old_value, new_value)
+  SELECT OLD.barcode, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'UPDATE', 'model', OLD.model, NEW.model
+  WHERE OLD.model IS NOT NEW.model;
+  INSERT INTO stock_movements (barcode, at, action, field, old_value, new_value)
+  SELECT OLD.barcode, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'UPDATE', 'brand', OLD.brand, NEW.brand
+  WHERE OLD.brand IS NOT NEW.brand;
+  INSERT INTO stock_movements (barcode, at, action, field, old_value, new_value)
+  SELECT OLD.barcode, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'UPDATE', 'source_type', OLD.source_type, NEW.source_type
+  WHERE OLD.source_type IS NOT NEW.source_type;
+END;
+`
   }
 ];

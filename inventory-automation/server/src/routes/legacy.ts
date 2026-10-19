@@ -509,6 +509,39 @@ export function legacyRouter(db: Db, sessionTtlHours: number, dbPath: string = '
         };
       }
 
+      case 'inventory.history': {
+        const barcode = String(params.barcode ?? '').trim();
+        if (!barcode) throw new ApiError(400, 'BAD_REQUEST', 'barcode is required');
+        const limit = Math.min(200, Math.max(1, Number(params.limit ?? 50) || 50));
+        const rows = db
+          .prepare(
+            `SELECT id, at, action, field, old_value, new_value
+             FROM stock_movements
+             WHERE barcode = ?
+             ORDER BY at DESC, id DESC
+             LIMIT ?`
+          )
+          .all(barcode, limit) as unknown as Array<{
+          id: number;
+          at: string;
+          action: string;
+          field: string | null;
+          old_value: string | null;
+          new_value: string | null;
+        }>;
+        return {
+          barcode,
+          movements: rows.map((row) => ({
+            id: Number(row.id),
+            at: row.at,
+            action: row.action,
+            field: row.field,
+            oldValue: row.old_value,
+            newValue: row.new_value
+          }))
+        };
+      }
+
       case 'auth.users': {
         assertAdmin(role);
         const rows = db

@@ -5,7 +5,7 @@ import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { Bookmark, Boxes, Download, Pencil, Plus, RefreshCw, ScanLine, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
 import { api, callApi } from '../lib/api';
 import { errorMessage, queryClient } from '../lib/query';
-import { downloadBase64, downloadText, hasRole, useDebounced } from '../lib/utils';
+import { downloadBase64, downloadText, fmtDateTime, hasRole, useDebounced } from '../lib/utils';
 import {
   Badge,
   Button,
@@ -16,6 +16,7 @@ import {
   Input,
   PageHeader,
   Select,
+  Skeleton,
   Toolbar,
 } from '../ui/base';
 import { DataTable, Pagination, type Column } from '../ui/table';
@@ -339,6 +340,12 @@ export function InventoryPage() {
   const activeFilter = !!q || Object.values(filters).some(Boolean);
   const barcodeKey = headers.includes('BARCODE') ? 'BARCODE' : headers[0] ?? '';
 
+  const history = useQuery({
+    queryKey: ['inventoryHistory', selected && barcodeKey ? selected[barcodeKey] : ''],
+    queryFn: () => api.inventoryHistory(String(selected?.[barcodeKey] ?? '')),
+    enabled: !!selected && !!barcodeKey,
+  });
+
   const filterSelects = FILTER_FIELDS.filter((f) => headers.includes(f)).map((f) => (
     <Select
       key={f}
@@ -587,14 +594,48 @@ export function InventoryPage() {
         }
       >
         {selected && (
-          <div className="detail-grid">
-            {headers.map((h) => (
-              <div className="detail-item" key={h}>
-                <div className="detail-label">{labelOf(h)}</div>
-                <div className="detail-value">{selected[h] || <span className="muted">—</span>}</div>
+          <>
+            <div className="detail-grid">
+              {headers.map((h) => (
+                <div className="detail-item" key={h}>
+                  <div className="detail-label">{labelOf(h)}</div>
+                  <div className="detail-value">{selected[h] || <span className="muted">—</span>}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ marginTop: 18 }}>
+              <div className="card-title" style={{ marginBottom: 8 }}>
+                History
               </div>
-            ))}
-          </div>
+              {history.isLoading ? (
+                <Skeleton h={48} />
+              ) : (history.data?.movements.length ?? 0) === 0 ? (
+                <span className="hint">No changes recorded yet.</span>
+              ) : (
+                <div className="stack" style={{ gap: 2 }}>
+                  {history.data?.movements.map((movement) => (
+                    <div
+                      key={movement.id}
+                      className="spread"
+                      style={{ gap: 10, padding: '7px 0', borderBottom: '1px solid var(--line)' }}
+                    >
+                      <span style={{ fontSize: 12.5 }}>
+                        {movement.action === 'INSERT'
+                          ? 'Added to inventory'
+                          : movement.action === 'DELETE'
+                            ? 'Removed from inventory'
+                            : `${labelOf(String(movement.field ?? '').toUpperCase())}: ${movement.oldValue || '—'} → ${
+                                movement.newValue || '—'
+                              }`}
+                      </span>
+                      <span className="hint">{fmtDateTime(movement.at) || movement.at}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
         )}
       </Drawer>
 

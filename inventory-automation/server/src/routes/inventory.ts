@@ -75,6 +75,9 @@ const listSchema = z
   .strict();
 
 const idSchema = z.object({ id: z.coerce.number().int().min(1) }).strict();
+const historyQuerySchema = z
+  .object({ limit: z.coerce.number().int().min(1).max(200).default(50) })
+  .strict();
 
 interface InventoryRow {
   id: number;
@@ -222,6 +225,48 @@ export function inventoryRouter(db: Db): Router {
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="inventory-${stamp}.csv"`);
       res.status(200).send(csv);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/inventory/:barcode/history', auth, (req, res, next) => {
+    try {
+      const barcode = String(req.params.barcode ?? '').trim();
+      if (!barcode) throw fail.validation({ barcode: 'required' }, 'barcode is required');
+      const query = parseInput(historyQuerySchema, req.query);
+      const rows = db
+        .prepare(
+          `SELECT id, barcode, at, action, field, old_value, new_value
+           FROM stock_movements
+           WHERE barcode = ?
+           ORDER BY at DESC, id DESC
+           LIMIT ?`
+        )
+        .all(barcode, query.limit) as unknown as Array<{
+        id: number;
+        barcode: string;
+        at: string;
+        action: string;
+        field: string | null;
+        old_value: string | null;
+        new_value: string | null;
+      }>;
+
+      res.status(200).json({
+        ok: true,
+        data: {
+          barcode,
+          movements: rows.map((row) => ({
+            id: Number(row.id),
+            at: row.at,
+            action: row.action,
+            field: row.field,
+            oldValue: row.old_value,
+            newValue: row.new_value
+          }))
+        }
+      });
     } catch (error) {
       next(error);
     }

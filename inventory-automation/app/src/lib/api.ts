@@ -1,7 +1,7 @@
 /* API client for the Bulk Repair backend (code-api.gs v1.1).
 
    Transports:
-   - gas : google.script.run ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ runApi()            (when served by Apps Script)
+   - gas : google.script.run ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ runApi()            (when served by Apps Script)
    - http: POST JSON to the deployed /exec URL     (static hosting / dev)
    - demo: local fixtures, no network              (UI preview)
 
@@ -57,6 +57,8 @@ export const getApiUrl = (): string => {
   // and the API share one origin, so /api/gas is the correct default.
   try {
     if (typeof window !== 'undefined' && /^https?:$/.test(window.location.protocol)) return '/api/gas';
+    // Packaged desktop shell (file://) talks to the local server by default.
+    if (typeof window !== 'undefined' && window.location.protocol === 'file:') return 'http://localhost:5050/api/gas';
   } catch {
     /* ignore */
   }

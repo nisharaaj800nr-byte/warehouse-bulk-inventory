@@ -433,10 +433,10 @@ export function ReportsPage() {
         {genForm && (
           <div className="form-grid">
             <Field label="Filter field">
-              <Input value={genForm.filterField} onChange={(e) => setGenForm({ ...genForm, filterField: e.target.value })} />
+              <Input value={genForm.filterField} placeholder="e.g. BRAND" onChange={(e) => setGenForm({ ...genForm, filterField: e.target.value })} />
             </Field>
             <Field label="Filter value">
-              <Input value={genForm.filterValue} onChange={(e) => setGenForm({ ...genForm, filterValue: e.target.value })} />
+              <Input value={genForm.filterValue} placeholder="e.g. Apple" onChange={(e) => setGenForm({ ...genForm, filterValue: e.target.value })} />
             </Field>
             <Field label="Columns" span2 hint="Comma-separated. Leave as-is to use the saved definition.">
               <Textarea value={genForm.columns} onChange={(e) => setGenForm({ ...genForm, columns: e.target.value })} />
@@ -495,7 +495,7 @@ export function ReportsPage() {
         }
       >
         <Field label="Template name">
-          <Input value={tplForm.name} onChange={(e) => setTplForm((p) => ({ ...p, name: e.target.value }))} />
+          <Input value={tplForm.name} placeholder="e.g. Weekly status" onChange={(e) => setTplForm((p) => ({ ...p, name: e.target.value }))} />
         </Field>
         <Field label="Config JSON" hint="Advanced — structure depends on your template engine.">
           <Textarea

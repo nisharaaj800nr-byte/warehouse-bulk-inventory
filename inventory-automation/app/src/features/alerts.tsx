@@ -227,6 +227,7 @@ export function AlertsPage() {
             <Field label="Threshold">
               <Input
                 type="number"
+                placeholder="e.g. 50"
                 value={form.threshold}
                 onChange={(e) => setForm({ ...form, threshold: e.target.value })}
               />

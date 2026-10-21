@@ -1046,7 +1046,7 @@ function PriorityTab() {
                 <tr key={i}>
                   {RULE_COLS.map((c) => (
                     <td key={c}>
-                      <Input value={r[c]} disabled={!canAdmin} onChange={(e) => update(i, c, e.target.value)} />
+                      <Input value={r[c]} placeholder={c === 'MIN' ? '0' : c === 'MAX' ? '30' : c === 'BUCKET' ? 'Below 30' : 'P3'} disabled={!canAdmin} onChange={(e) => update(i, c, e.target.value)} />
                     </td>
                   ))}
                   <td>

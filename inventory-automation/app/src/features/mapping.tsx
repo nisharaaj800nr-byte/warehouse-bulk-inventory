@@ -123,11 +123,12 @@ export function MappingPage() {
               {rows.map((r, i) => (
                 <tr key={i}>
                   <td>
-                    <Input value={r.source} disabled={!canAdmin} onChange={(e) => update(i, { source: e.target.value })} />
+                    <Input value={r.source} placeholder="e.g. QC Stock" disabled={!canAdmin} onChange={(e) => update(i, { source: e.target.value })} />
                   </td>
                   <td>
                     <Input
                       list="rawheaders"
+                      placeholder="e.g. Barcode"
                       value={r.sourceColumn}
                       disabled={!canAdmin}
                       onChange={(e) => update(i, { sourceColumn: e.target.value })}
@@ -136,6 +137,7 @@ export function MappingPage() {
                   <td>
                     <Input
                       list="targetfields"
+                      placeholder="e.g. BARCODE"
                       value={r.target}
                       disabled={!canAdmin}
                       onChange={(e) => update(i, { target: e.target.value })}
@@ -160,6 +162,7 @@ export function MappingPage() {
                   <td>
                     <Input
                       type="number"
+                      placeholder="1"
                       value={r.order}
                       disabled={!canAdmin}
                       onChange={(e) => update(i, { order: e.target.value })}

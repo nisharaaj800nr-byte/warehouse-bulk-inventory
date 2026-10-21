@@ -150,6 +150,7 @@ export function SettingsPage() {
               ) : (
                 <Input
                   type={f.type === 'password' ? 'password' : 'text'}
+                  placeholder={f.type === 'password' ? 'Enter secret' : 'Enter value'}
                   value={values[f.key] ?? ''}
                   disabled={!canAdmin}
                   onChange={(e) => set(f.key, e.target.value)}
@@ -160,7 +161,7 @@ export function SettingsPage() {
           ))}
           {extraKeys.map((k) => (
             <Field key={k} label={k}>
-              <Input value={values[k] ?? ''} disabled={!canAdmin} onChange={(e) => set(k, e.target.value)} />
+              <Input value={values[k] ?? ''} placeholder="Enter value" disabled={!canAdmin} onChange={(e) => set(k, e.target.value)} />
             </Field>
           ))}
         </div>
@@ -456,6 +457,7 @@ function TwoFactorCard() {
             <Input
               type="password"
               value={password}
+              placeholder="Current password"
               onChange={(event) => setPassword(event.target.value)}
               autoComplete="current-password"
             />
@@ -463,6 +465,7 @@ function TwoFactorCard() {
           <Field label="Authenticator code" hint="Or one of your recovery codes.">
             <Input
               value={code}
+              placeholder="123456"
               onChange={(event) => setCode(event.target.value)}
               inputMode="numeric"
               autoComplete="one-time-code"

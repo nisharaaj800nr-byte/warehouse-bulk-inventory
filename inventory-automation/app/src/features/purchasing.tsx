@@ -402,12 +402,14 @@ export function PurchasingPage() {
           <Field label="Name" span2>
             <Input
               value={vendorForm.name}
+              placeholder="e.g. Acme Supplies"
               onChange={(event) => setVendorForm((prev) => ({ ...prev, name: event.target.value }))}
             />
           </Field>
           <Field label="Contact person">
             <Input
               value={vendorForm.contactName}
+              placeholder="e.g. Rajesh Kumar"
               onChange={(event) => setVendorForm((prev) => ({ ...prev, contactName: event.target.value }))}
             />
           </Field>
@@ -415,24 +417,28 @@ export function PurchasingPage() {
             <Input
               type="email"
               value={vendorForm.email}
+              placeholder="vendor@example.com"
               onChange={(event) => setVendorForm((prev) => ({ ...prev, email: event.target.value }))}
             />
           </Field>
           <Field label="Phone">
             <Input
               value={vendorForm.phone}
+              placeholder="+91 98765 43210"
               onChange={(event) => setVendorForm((prev) => ({ ...prev, phone: event.target.value }))}
             />
           </Field>
           <Field label="Address">
             <Input
               value={vendorForm.address}
+              placeholder="City, state"
               onChange={(event) => setVendorForm((prev) => ({ ...prev, address: event.target.value }))}
             />
           </Field>
           <Field label="Notes" span2>
             <Input
               value={vendorForm.notes}
+              placeholder="Payment terms, delivery notes…"
               onChange={(event) => setVendorForm((prev) => ({ ...prev, notes: event.target.value }))}
             />
           </Field>
@@ -502,6 +508,7 @@ export function PurchasingPage() {
           <Field label="Notes">
             <Input
               value={poForm.notes}
+              placeholder="e.g. Urgent restock"
               onChange={(event) => setPoForm((prev) => ({ ...prev, notes: event.target.value }))}
             />
           </Field>
@@ -523,15 +530,15 @@ export function PurchasingPage() {
             <div key={index} className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
               <div style={{ flex: '1 1 140px' }}>
                 <label className="hint">Barcode (optional)</label>
-                <Input value={line.barcode} onChange={(event) => setLine(index, { barcode: event.target.value })} />
+                <Input value={line.barcode} placeholder="e.g. BR-1001 (optional)" onChange={(event) => setLine(index, { barcode: event.target.value })} />
               </div>
               <div style={{ flex: '1 1 150px' }}>
                 <label className="hint">Model</label>
-                <Input value={line.model} onChange={(event) => setLine(index, { model: event.target.value })} />
+                <Input value={line.model} placeholder="e.g. iPhone 13" onChange={(event) => setLine(index, { model: event.target.value })} />
               </div>
               <div style={{ flex: '1 1 110px' }}>
                 <label className="hint">Brand</label>
-                <Input value={line.brand} onChange={(event) => setLine(index, { brand: event.target.value })} />
+                <Input value={line.brand} placeholder="e.g. Apple" onChange={(event) => setLine(index, { brand: event.target.value })} />
               </div>
               <div style={{ width: 80 }}>
                 <label className="hint">Qty</label>
@@ -613,6 +620,7 @@ export function PurchasingPage() {
                     type="number"
                     min={0}
                     max={remaining(line)}
+                    placeholder="0"
                     value={receiveQty[line.id] ?? ''}
                     onChange={(event) =>
                       setReceiveQty((prev) => ({ ...prev, [line.id]: event.target.value }))

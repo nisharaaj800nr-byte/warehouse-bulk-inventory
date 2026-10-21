@@ -419,13 +419,13 @@ export function ChangePasswordDialog({ open, onClose }: { open: boolean; onClose
     >
       {error && <div className="login-err">{error}</div>}
       <Field label="Current password">
-        <Input type="password" value={oldPw} onChange={(e) => setOldPw(e.target.value)} autoComplete="current-password" />
+        <Input type="password" value={oldPw} placeholder="Current password" onChange={(e) => setOldPw(e.target.value)} autoComplete="current-password" />
       </Field>
-      <Field label="New password" hint="At least 6 characters.">
-        <Input type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} autoComplete="new-password" />
+      <Field label="New password" hint="At least 10 characters with letters and numbers.">
+        <Input type="password" value={newPw} placeholder="10+ characters with letters and numbers" onChange={(e) => setNewPw(e.target.value)} autoComplete="new-password" />
       </Field>
       <Field label="Confirm new password">
-        <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" />
+        <Input type="password" value={confirm} placeholder="Repeat the new password" onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" />
       </Field>
     </Modal>
   );

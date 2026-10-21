@@ -28,6 +28,34 @@ import { BulkEditButton } from './bulk-edit';
 
 const FILTER_FIELDS = ['STATUS_BUCKET', 'AGE_BUCKET', 'BRAND', 'CATEGORY', 'PRIORITY', 'BIN_BUCKET', 'SOURCE'];
 const HIDDEN_KEY = 'ors.inv.hidden';
+const FIELD_PLACEHOLDERS: Record<string, string> = {
+  BARCODE: 'e.g. BR-1001',
+  MODEL: 'e.g. iPhone 13',
+  BRAND: 'e.g. Apple',
+  CATEGORY: 'e.g. Phone',
+  MOD_AGE: 'e.g. 12',
+  STOCK_AGE: 'e.g. 45',
+  AGE_BUCKET: 'e.g. Above 75',
+  STATUS: 'e.g. READY or QC_FAIL',
+  STATUS_BUCKET: 'e.g. QC_FAIL',
+  PRIORITY: 'e.g. P1',
+  LOCATION: 'e.g. A1 or SW07',
+  BIN_BUCKET: 'e.g. Shelf A',
+  SOURCE: 'e.g. QC_STOCK',
+  SOURCE_TYPE: 'e.g. INVENTORY',
+  SERIAL: 'e.g. SN-88421',
+  MRP: 'e.g. 24999'
+};
+
+const FIELD_HINTS: Record<string, string> = {
+  BARCODE: 'Unique device ID. Cannot be changed later.',
+  STOCK_AGE: 'Days since the device entered stock.',
+  AGE_BUCKET: 'Calculated from Rules — leave blank to auto-fill.',
+  STATUS_BUCKET: 'Calculated from Rules — leave blank to auto-fill.',
+  PRIORITY: 'Calculated from Rules — leave blank to auto-fill.',
+  BIN_BUCKET: 'Physical shelf or cage. Calculated from Location rules if blank.'
+};
+
 const RIGHT_ALIGN = /AGE|COUNT|QTY|PRICE/;
 const VIEW_KEY = 'br.inventory.view.v1';
 const VIEWS_KEY = 'br.inventory.views.v1';
@@ -139,9 +167,14 @@ function ItemDialog({
       {err && <div className="login-err">{err}</div>}
       <div className="form-grid">
         {headers.map((h) => (
-          <Field key={h} label={labelOf(h)} hint={isEdit && h === 'BARCODE' ? 'Key column — not editable.' : undefined}>
+          <Field
+            key={h}
+            label={labelOf(h)}
+            hint={isEdit && h === 'BARCODE' ? 'Key column — not editable.' : FIELD_HINTS[h]}
+          >
             <Input
               value={values[h] ?? ''}
+              placeholder={FIELD_PLACEHOLDERS[h] ?? 'Enter value'}
               disabled={isEdit && h === 'BARCODE'}
               onChange={(e) => setValues((prev) => ({ ...prev, [h]: e.target.value }))}
             />

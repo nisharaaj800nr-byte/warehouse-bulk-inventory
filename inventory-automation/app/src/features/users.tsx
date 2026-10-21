@@ -187,10 +187,11 @@ function UsersTab() {
             </Field>
             <Field
               label={edit.isNew ? 'Initial password (optional)' : 'New password (optional)'}
-              hint="6–100 characters. Leave blank to keep the current password."
+              hint="10+ characters with letters and numbers. Leave blank to keep the current password."
             >
               <Input
                 type="password"
+                placeholder="At least 10 characters"
                 value={edit.password}
                 onChange={(e) => setEdit({ ...edit, password: e.target.value })}
                 autoComplete="new-password"
@@ -218,7 +219,7 @@ function UsersTab() {
       >
         {pwErr && <div className="login-err">{pwErr}</div>}
         <Field label="New password" hint="All of this user's sessions will be signed out.">
-          <Input type="password" value={pwValue} onChange={(e) => setPwValue(e.target.value)} autoComplete="new-password" />
+          <Input type="password" value={pwValue} placeholder="New password (10+ chars)" onChange={(e) => setPwValue(e.target.value)} autoComplete="new-password" />
         </Field>
       </Modal>
     </div>

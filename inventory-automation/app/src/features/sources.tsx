@@ -202,10 +202,10 @@ export function SourcesPage() {
               <Input value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} placeholder="Google Sheet" />
             </Field>
             <Field label="Sheet name" hint="Tab name in this spreadsheet">
-              <Input value={form.sheet} onChange={(e) => setForm({ ...form, sheet: e.target.value })} />
+              <Input value={form.sheet} placeholder="e.g. Sheet1" onChange={(e) => setForm({ ...form, sheet: e.target.value })} />
             </Field>
             <Field label="Sheet ID (optional)" hint="For external spreadsheets">
-              <Input value={form.sheetId} onChange={(e) => setForm({ ...form, sheetId: e.target.value })} />
+              <Input value={form.sheetId} placeholder="e.g. 1AbC… (optional)" onChange={(e) => setForm({ ...form, sheetId: e.target.value })} />
             </Field>
             <Field label="Join key (optional)">
               <Input value={form.joinKey} onChange={(e) => setForm({ ...form, joinKey: e.target.value })} placeholder="BARCODE" />

@@ -1,55 +1,85 @@
 # Bulk Repair — Complete User Guide (Hinglish)
 
-Ye guide app ke **har tab aur har screen** ko detail me explain karta hai: kaun use kar sakta hai, kya fields hain, step-by-step kya karna hai, aur kahan galti hoti hai.
+**Version 1.0.1** · Portal + Desktop (Windows/macOS) + Android
 
-> **Legend:** ✅ = Local mode aur Apps Script mode dono me kaam karta hai. ⚠️ = sirf Apps Script / Google Sheets mode me available hai.
+Ye guide app ke **har tab, har button aur har field** ko explain karta hai — kaam kya hai, kaun use karega, step-by-step kya karna hai, aur kis condition me kya hoga.
 
----
-
-## 1. Is guide ko kaise use karein
-
-- Pehli baar app chala rahe ho? Section 3 → 4 → 5 padho.
-- Roz ka kaam karna hai? Section 7 (Inventory), 8 (Imports), 10 (Reports) kaafi hai.
-- Admin ho? Section 17, 18, 19 zaroor padho.
-- Kuch kaam nahi kar raha? Section 23 (Troubleshooting) dekho.
+> **Legend:** ✅ Local mode + Apps Script mode dono me available · ⚠️ Sirf Apps Script (Google Sheets) mode me · 🖥️ Sirf desktop app me
 
 ---
 
-## 2. App kya karta hai
+## 1. Ye guide kaise use karein
 
-Bulk Repair ek repair/warehouse inventory system hai:
+| Aap kya kar rahe ho | Kahan padho |
+|---|---|
+| Pehli baar install/setup | Section 3 → 4 → 5 |
+| Roz ka kaam (stock, import, labels) | 6.2, 6.3, 6.6, 6.13 |
+| Reports/management | 6.8 – 6.12, 6.15 |
+| Admin kaam (users, security) | 6.17 – 6.26 |
+| Barcode scanner lagana | Section 7 |
+| Kuch kaam nahi kar raha | Section 10 aur 11 |
+| Naya kya hai 1.0.1 me | Section 15 |
+
+---
+
+## 2. App kya hai — modes aur components
+
+Bulk Repair ek **warehouse / repair inventory system** hai:
 
 - Devices ka master data (barcode, model, brand, status, age, location, priority)
-- Excel/CSV/PDF se bulk import aur rollback
-- Multiple sources ka merge (Apps Script mode)
-- Rules engine: age/status/location se auto bucket + priority
-- Dashboard, ageing trend, reports (CSV/XLSX/PDF)
-- Barcode labels printing
-- Threshold alerts (email/WhatsApp)
-- Vendors aur purchase orders, receiving se stock update
-- Users, roles, sessions, audit log, 2FA
+- Excel/CSV/PDF se bulk import + rollback
+- Rules engine se auto-classification (age, status, location)
+- Dashboard, reports, labels, alerts
+- Vendors aur purchase orders (receiving se stock update)
+- Users, roles, sessions, audit, 2FA
 
-**Do modes:**
+### 2.1 Do data modes
 
-| Mode | Data kahan | Kab use karein |
+| | **Local** | **Apps Script** |
 |---|---|---|
-| Local (offline) | `server/data/bulkrepair.db` (SQLite) | Single office/warehouse, fast, no internet |
-| Apps Script | Google Sheets | Phone se kahin se access, Google ecosystem |
+| Data kahan | `bulkrepair.db` (SQLite) | Google Sheet |
+| Internet | Nahi chahiye | Chahiye |
+| Speed | Fast | Network pe depend |
+| Multisource merge | ✅ file-based | ✅ sheet-based |
+| Google Sheet se direct import | ❌ | ✅ |
+| Sheet security (lock/unlock) | ❌ | ✅ |
+| Baaki sab tabs | ✅ | ✅ |
 
-Kuch advanced tabs sirf Apps Script mode me kaam karte hain — unpe ⚠️ mark hai. Local mode me Sources, Mapping, Priority rules, Report templates, Conflicts, Alerts checks, Reports definitions, Source data, Selftest aur file-based Multi-source merge sab supported hain. Sirf Google Sheets-specific cheezein (Sheet se direct import, Sheet security, Telegram test) Apps Script mode me rehti hain.
+### 2.2 Components
+
+| Component | Kya hai | Data kahan |
+|---|---|---|
+| **Portal** (web) | Browser me poora UI | Backend se |
+| **Desktop app** | Windows/macOS app; **server khud start karta hai** | App data folder |
+| **Android APK** | Mobile UI + camera scan | External backend |
+| **Server** | Node.js + Express + SQLite | `data/bulkrepair.db` |
+| **GAS backend** | Apps Script + Sheets | Google Sheet |
+
+### 2.3 Desktop data location
+
+| OS | Database | Backups | Logs |
+|---|---|---|---|
+| macOS | `~/Library/Application Support/Bulk Repair/data/bulkrepair.db` | `.../data/backups/` | `.../logs/server.log` |
+| Windows | `%APPDATA%\Bulk Repair\data\bulkrepair.db` | `...\data\backups\` | `...\logs\server.log` |
 
 ---
 
-## 3. Install aur start
+## 3. Install aur first run
 
-### 3.1 Zaroorat
+### 3.1 Desktop app (sabse easy)
 
-- Node.js 22+
-- npm 10+
-- Browser (Chrome/Edge/Safari)
-- Android build ke liye: Android SDK + Java 21
+1. `dist-builds/` se apna installer lo:
+   - Windows x64: `BulkRepair-1.0.1-windows-x64-portable.exe`
+   - Windows ARM: `BulkRepair-1.0.1-windows-arm64-portable.exe`
+   - macOS: `BulkRepair-1.0.1-macos-arm64.zip`
+2. **Windows:** exe double-click → SmartScreen aaye to **More info → Run anyway**
+3. **macOS:** zip unzip → `Bulk Repair.app` ko Applications me drag → pehli baar **right-click → Open**
+4. App khulte hi andar server start hota hai (port 5050, busy ho to 5051…)
+5. Setup wizard → owner account → Dashboard
 
-### 3.2 Server + portal (local mode)
+> Desktop me alag se Node/npm/server install karne ki zarurat **nahi**.
+
+### 3.2 Server + portal (browser)
 
 ```bash
 cd inventory-automation/server
@@ -57,20 +87,29 @@ npm install
 npm run dev
 ```
 
-- `npm run dev` = TypeScript build + server start
-- URL: **http://localhost:5050** (port `server/.env` se)
-- Pehli baar `server/data/bulkrepair.db` khud banta hai
-- Migrations automatic chalti hain
+- URL: `http://localhost:5050`
+- Port `.env` se aata hai
+- Pehli baar DB khud banti hai
 
-### 3.3 Production build
+Production:
 
 ```bash
-cd inventory-automation/server
-npm install
-npm run build:panel   # portal build + server/public me copy
-npm run build         # server build
+npm run build:panel   # portal build + copy
+npm run build
 npm start
 ```
+
+### 3.3 Android APK
+
+```bash
+adb install -r BulkRepair-1.0.1-android-debug.apk
+```
+
+- USB: `adb reverse tcp:5050 tcp:5050` → app me `http://localhost:5050`
+- Wi-Fi: `http://<computer-ka-LAN-IP>:5050`
+- Backend kisi aur machine/VPS pe ho to wahi URL do
+
+APK ke saath **camera scan** chalta hai; desktop pe hardware scanner.
 
 ### 3.4 Docker
 
@@ -79,62 +118,53 @@ cd inventory-automation
 docker compose up --build
 ```
 
-- App: `http://localhost:5000`
-- Data `/data` volume me
-
-### 3.5 Desktop app (self-contained)
-
-`dist-builds/` me:
-
-- macOS: `BulkRepair-1.0.0-macos-arm64.zip`
-- Windows x64: `BulkRepair-1.0.0-windows-x64-portable.exe`
-
-Desktop app **apna server khud start karta hai** — alag se `npm start` ki zarurat nahi.
-
-- App launch → embedded server port **5050** pe (busy ho to 5051, 5052…)
-- Database:
-  - macOS: `~/Library/Application Support/Bulk Repair/data/bulkrepair.db`
-  - Windows: `%APPDATA%\Bulk Repair\data\bulkrepair.db`
-- Backups: usi folder ke `data/backups/`
-- Server logs: `logs/server.log` (same app data folder)
-
-Agar external backend (VPS/LAN) use karna ho to Setup me **Server URL** do —
-wahi URL embedded server ke bajaye use hoga.
-
-### 3.6 Android APK
-
-```bash
-adb install -r BulkRepair-1.0.0-android-debug.apk
-```
-
-- USB: `adb reverse tcp:5050 tcp:5050` → app me `http://localhost:5050`
-- Wi-Fi: `http://<Mac-ka-LAN-IP>:5050`
+- URL: `http://localhost:5000`
+- Data `/data` volume me rehta hai
 
 ---
 
-## 4. First-time setup (3 steps)
+## 4. First-time setup — step by step
 
 ### Step 1 — Backend choose karo
 
-| Option | Kab |
+| Option | Kab chuno |
 |---|---|
-| **This computer (offline)** | Local SQLite, no internet |
-| **Google Apps Script / Google Sheets** | Data sheet me, phone se access |
+| **This computer (offline)** | Data local chahiye, internet nahi |
+| **Google Apps Script / Google Sheets** | Data Sheet me, phone se kahin se access |
 
-Apps Script choose kiya to `/exec` URL daalo → **Test connection**.
+- Local choose kiya: **Server URL blank** chhod do (desktop ka embedded server khud use hoga)
+- External backend: `http://192.168.1.10:5050` ya `https://your-domain.com`
+- GAS choose kiya: deployment ka `/exec` URL daalo → **Test connection**
 
-### Step 2 — Google Sheet link (optional)
+**Test connection ke results:**
 
-Sirf quick-access ke liye save hota hai. Local mode me skip kar sakte ho.
+| Result | Matlab |
+|---|---|
+| Connected ✅ | URL sahi, backend chal raha hai |
+| Not reachable ❌ | URL galat, server band, ya firewall |
+
+### Step 2 — Google Sheet (optional)
+
+Sirf quick-access link save hota hai. Local mode me skip.
 
 ### Step 3 — Owner account
 
-- Email
-- Password: **10+ characters**, letters + numbers dono
-- Confirm password
-- **Finish setup**
+| Field | Rule |
+|---|---|
+| Email | Valid email |
+| Password | **10+ characters**, letters + numbers dono |
+| Confirm | Same password |
 
-Ye account `OWNER` banega — sab permissions.
+**Finish setup** → pehla account `OWNER` role ke saath banta hai.
+
+**Conditions:**
+
+| Situation | Kya hoga |
+|---|---|
+| Pehla account | Owner create hoga |
+| Pehle se users hain | Bootstrap fail → wahi email/password se **login fallback** |
+| Password weak | Inline error, aage nahi badhega |
+| Email invalid | Inline error |
 
 ---
 
@@ -143,929 +173,872 @@ Ye account `OWNER` banega — sab permissions.
 ### 5.1 Login
 
 - Email + password
-- 2FA on hai to 6-digit code
-- 5 galat attempts → 15 minute lock
-- "Keep me signed in" = 30 din wala session
+- 2FA on hai to 6-digit code (ya recovery code)
+- **Keep me signed in**
+- 5 galat attempts → **15 minute lock**
+- Password bhool gaye → admin se reset karwao
 
 ### 5.2 Roles
 
-| Role | Access |
+| Role | Kya kar sakta hai |
 |---|---|
-| **VIEWER** | Read-only: dashboard, inventory, reports dekh sakta hai |
-| **OPERATOR** | Inventory add/edit, imports, labels, scan, AI commands |
-| **MANAGER** | + reports, scheduled reports, purchasing, conflicts clear |
-| **ADMIN** | + users, settings, sessions, vendors, 2FA reset |
+| **VIEWER** | Sab dekh sakta hai, kuch badal nahi sakta |
+| **OPERATOR** | Inventory edit, imports, labels, scanner, AI commands |
+| **MANAGER** | + reports, schedules, purchasing, activity/history |
+| **ADMIN** | + users, security, settings, email config, system health |
 | **OWNER** | Sab kuch |
 
-Sidebar options role ke hisaab se hide hote hain.
-
-### 5.3 Sidebar groups
+### 5.3 Sidebar — 28 tabs
 
 | Group | Tabs |
 |---|---|
-| Overview | Dashboard |
-| Operations | Inventory, Imports, Labels, Reports, Scheduled reports, Alerts, Purchasing |
-| Configuration | Sources, Field Mapping, Rules |
-| Administration | Users & Security, Sessions & Audit, Activity & Audit, Settings |
-| Tools | AI Assistant |
+| **Overview** | Dashboard |
+| **Operations** | Data Sources, Import Data, Multisource, Field Mapping, Inventory, Rules, Reports, Report Templates, Report Builder, Alerts, Ageing Trends, Labels, Schedules, Exports, Purchasing |
+| **Administration** | Users & Roles, Security, Sessions & Audit, Activity Log, Processing, Processing History, Data Quality, System Health, Email Settings, Settings |
+| **Tools** | AI Command Center, Help |
 
-Sidebar ke bottom me **language** selector (English / हिन्दी / ગુજરાતી) aur **Collapse** button hai.
+Sidebar ke bottom me **language** (English / हिन्दी / ગુજરાતી) aur **Collapse** button hai.
+
+### 5.4 Collapse behaviour
+
+- Collapse karne pe sidebar **76px** ho jaata hai
+- Sirf icons dikhte hain, hover pe tooltip
+- Language selector hide ho jaata hai
+- Expand pe sab wapas
+
+### 5.5 Common login conditions
+
+| Condition | Result |
+|---|---|
+| Account inactive | Login block; purane sessions bhi revoke |
+| Session revoke hua | Agli request pe login page |
+| Role change hua | Agli request se naya role |
+| Backend band | "Not connected" error |
+| 2FA code galat | `Invalid authenticator code` + attempt count |
 
 ---
 
-## 6. Dashboard
+## 6. Har tab ka detailed guide
+
+Har tab ke liye: **kaam**, **kaun**, **page pe kya hai**, **steps**, **conditions**, **galtiyan**.
+
+### 6.1 Dashboard
+
+**Kaam:** ek nazar me poora inventory status.
 
 **Kaun:** sab roles.
 
-### 6.1 Kya dikhta hai
+**Page pe kya hai:**
 
-| Block | Matlab |
+| Block | Kya dikhata hai |
 |---|---|
-| **Inventory items** | Total rows |
-| **Active sources** | Kitne sources on hain |
-| **Active reports** | Report definitions |
-| **Recent errors** | Latest import errors ka count |
-| **By status** | Status distribution (bar) |
-| **By age bucket** | Age buckets (donut) |
-| **By status bucket** | Bucket distribution (bar) |
-| **Top brands** | Top 5 brands (bar) |
-| **Ageing trend** | Daily snapshots (line) — daily process chalne pe banta hai |
-| **Recent runs** | Latest import/process jobs |
-| **Recent errors** | Last errors with barcode/field/message |
+| 4 KPI cards | Inventory items, Active sources, Active reports, Recent errors |
+| By status | Status distribution (bar) |
+| By age bucket | Age buckets (donut) |
+| By status bucket | Bucket distribution (bar) |
+| Top brands | Top 5 brands (bar) |
+| Ageing trend | Daily line chart |
+| Recent runs | Latest import/process jobs |
+| Recent errors | Last errors (barcode, field, message) |
 
-### 6.2 Actions
+**Steps:**
 
-- **Refresh** — data reload
-- **Run daily process** (OPERATOR+) — rules dobara apply, inventory rebuild
+1. Page kholo — data khud load hota hai
+2. **Refresh** — latest data
+3. **Run daily process** (OPERATOR+) — rules dobara apply + trend snapshot
 
-### 6.3 Kab kya karein
+**Conditions:**
 
-- Subah: errors aur ageing trend dekho
-- Charts empty hain? Inventory import karo ya daily process chalao
-- Recent errors me same barcode baar-baar? Us row ka data check karo
+| Condition | Result |
+|---|---|
+| Inventory empty | Charts "No data yet" |
+| Daily process nahi chala | Trend empty |
+| Errors hain | Recent errors count red |
+| Backend down | Error panel + Retry |
+
+**Tips:** Subah sabse pehle errors aur ageing dekho. Charts empty ho to pehle import karo, phir process chalao.
 
 ---
 
-## 7. Inventory
+### 6.2 Data Sources
 
-**Kaun:** sab dekh sakte hain; OPERATOR+ edit.
+**Kaam:** batana ki data kahan se aayega.
 
-### 7.1 Toolbar (left → right)
+**Kaun:** ADMIN (view sab kar sakte hain).
 
-| Control | Kaam |
+**Page pe kya hai:** sources ka table (name, role, type, sheet, join key, active) + New source.
+
+**Steps:**
+
+1. **New source**
+2. Name: `Daily QC`
+3. Role: `PRIMARY` (main data) ya `JOIN` (extra data)
+4. Type: free text (`Google Sheet`, `QC`, `TRC`, `Inventory`, `Location`)
+5. Sheet name: `Sheet1`
+6. Sheet ID: external sheet ho to
+7. Join key: `barcode`
+8. Join fields: `STOCK_AGE,LOCATION`
+9. Active ON → **Save**
+
+**Conditions:**
+
+| Condition | Result |
 |---|---|
-| **Search** | Barcode / model / brand me search (debounced) |
-| **Bulk edit** | Selected rows ka status/location/bin/priority badlo |
-| **Scan** | Camera se barcode scan → search me bhar jaata hai |
-| **Status / Age / Brand / Category / Priority / Bin / Source** | Filter dropdowns |
-| **Clear** | Search + filters reset |
-| **Views** | Saved filter presets |
-| **Columns** | Columns hide/show |
-| **Export** | CSV export (columns choose karke) |
-| **Add row** | Naya item |
+| Name duplicate | Save fail (`already exists`) |
+| Active OFF | Pipeline us source ko skip karega |
+| Delete | Mapping bhi delete; inventory safe |
+| Vendor/PO wala source? | Koi lena-dena nahi |
 
-### 7.2 Saved views (Views menu)
-
-1. Search/filters set karo
-2. **Views → Save current view…**
-3. Naam do (e.g. "Apple — above 75 days") → **Save view**
-4. Dobara use karna ho to **Views → naam** pe click
-5. Delete: usi row me **X**
-
-Search, filters aur page size automatically save rehte hain — reload pe wapas milte hain.
-
-### 7.3 Columns menu
-
-- Checkbox se column on/off
-- **BARCODE** column lock hai (hide nahi hota)
-- **Show all columns** se sab wapas
-- Selection browser me save rehta hai
-
-### 7.4 Row detail drawer
-
-Row pe click karo:
-
-- Saare fields
-- **History** timeline:
-  - `Added to inventory`
-  - `Removed from inventory`
-  - `FIELD: old → new` (status, location, bin, priority, age, model, brand)
-- Buttons: **Edit**, **Delete**, **Close**
-
-History har write path se banti hai — REST, imports, bulk edit, purchases.
-
-### 7.5 Naya item
-
-**Add row** → form:
-
-| Field | Note |
-|---|---|
-| BARCODE | Required, unique |
-| MODEL / BRAND | Text |
-| STATUS | Raw status |
-| STOCK_AGE | Days |
-| AGE_BUCKET / PRIORITY / STATUS_BUCKET | Rules se auto (manual override bhi ho sakta hai) |
-| LOCATION / BIN_BUCKET | Rack/bin |
-| SOURCE_TYPE | Manual entries ke liye |
-
-Save pe rules apply hote hain.
-
-### 7.6 Edit / Delete
-
-- **Edit:** drawer → Edit → fields badlo → Save
-- Barcode editable nahi hota
-- **Delete:** drawer → Delete → confirm. Ye permanent hai (history me `Removed` record rehta hai).
-
-### 7.7 Bulk edit
-
-1. Rows select karo (checkbox)
-2. **Bulk edit**
-3. Fields choose karo: status, status bucket, location, bin bucket, priority
-4. Apply
-
-Sirf selected fields badalte hain; baaki data same rehta hai. Action audit log me jaata hai.
-
-### 7.8 Export CSV
-
-1. **Export**
-2. Columns tick karo (All / None shortcuts)
-3. **Export CSV** → download
-
-### 7.9 Common mistakes
-
-- Barcode duplicate → save fail (barcode unique hai)
-- Empty filter result → **Clear** dabao
-- Purana data dikh raha hai → **Refresh**
-
-### 7.10 Hardware barcode scanners (desktop)
-
-Desktop (Windows/macOS) pe camera scan nahi, **USB hardware scanner** support hai.
-
-- Zyada tar USB scanners **keyboard ki tarah** kaam karte hain — koi driver install nahi karna padta.
-- Inventory page pe kahin bhi scan karo — search box khud bhar jaata hai.
-- **Settings → Barcode scanner** me:
-  - Mode: Hardware / Camera (desktop pe hardware)
-  - Minimum code length (chhoti typing ignore hoti hai)
-  - Terminator: Enter / Tab / None
-  - **Test scanner** field me scan karke verify karo
-- **Serial/COM scanners:** Settings → **Connect serial scanner** (desktop app me Web Serial support hai, 9600 baud default).
-- Mobile app me camera scan available rehta hai.
+**Tips:** Type me `QC` likhne se system source type `QC_STOCK` infer karta hai — merge/priority ke liye zaroori.
 
 ---
 
-## 8. Imports
+### 6.3 Import Data (Universal import) ✅
 
-**Kaun:** OPERATOR+ (commit/rollback); VIEWER dekh sakta hai.
+**Kaam:** file se bulk data laana.
 
-Imports ke **5 tabs** hain.
+**Kaun:** OPERATOR+ (view sab).
 
-### 8.1 Universal import ✅
-
-File se data laane ka main rasta.
-
-**Supported files:** CSV, TSV, TXT, XLS, XLSX, PDF (max 15 MB / 50,000 rows).
+**Supported files:** CSV, TSV, TXT, XLS, XLSX, PDF · max **15 MB / 50,000 rows**.
 
 **Step-by-step:**
 
-1. **Imports → Universal import**
-2. **Choose file** — file select karo
-3. App columns auto-detect karta hai
-4. Mapping check karo:
-   - Har source column ke saamne target field
-   - `BARCODE` required hai
-   - Galat mapping ho to dropdown se badlo
-5. **Validate**:
-   - Green = ready
-   - Red rows = errors (row number + message)
+1. **Import Data** tab
+2. **Choose file**
+3. Columns auto-detect hote hain — mapping check karo
+4. `BARCODE` required hai
+5. **Validate** — errors preview
 6. **Import now**
-   - Preview me total/valid/imported/failed counts
-   - Partial failure ho sakta hai — failed rows list dekho
-7. Zarurat ho to **Roll back import**
+7. Result card: processed / valid / imported / failed / skipped
+8. Galti ho to **Roll back import**
 
-**Result card:**
+**Conditions:**
 
-| Field | Matlab |
+| Condition | Result |
 |---|---|
-| Status | Committed / Dry run |
-| Processed | Total rows |
-| Valid | Rules pass |
-| Imported | Inventory me gaye |
-| Failed | Reject hue |
-| Skipped | Empty/duplicate |
-| Errors table | Row + message |
+| Barcode column missing | Validate fail |
+| Duplicate barcode | Existing row **update** hota hai |
+| Empty incoming value | Purani value preserve hoti hai |
+| File bada | Upload reject |
+| Partial errors | Job `PARTIAL_FAILURE`, baaki rows import |
+| Rollback | Naye barcodes delete, purane restore |
+| Dobara rollback | `already rolled back` error |
 
-**Rollback kya karta hai:**
-
-- Is job ne jo naye barcodes banaye → delete
-- Jo pehle se the → unki purani values restore
-- Dobara rollback nahi hota
-- Sirf committed job ka rollback hota hai, dry run ka nahi
-
-**Tips:**
-
-- Pehle 10-20 rows ki test file se mapping verify karo
-- Barcode column me spaces na ho
-- Age column numeric ho
-- Ek hi file me duplicate barcode na ho
-
-### 8.2 Multi-source ✅
-
-Purpose: QC Stock + TRC + Inventory + Location jaise alag sources ko **barcode pe join** karke ek final record banana.
-
-**Local mode (files):**
-
-1. Har source ke liye ek CSV/Excel file choose karo (QC Stock, TRC, Inventory, Location)
-2. **Validate files** — har file stage hoti hai, columns auto-map hote hain
-3. **Import all sources** — merge chalta hai
-4. Result: devices, inserted, updated, conflicts
-5. Galti ho to **Roll back import**
-
-**Apps Script mode (sheets):**
-
-1. Har source ka type + sheet name + sheet ID do
-2. **Validate all** → **Import all sources**
-
-Conflict ka matlab: same barcode, same field, do sources me alag value. Kaun jeetega ye **Priority rules** decide karte hain (local me bhi editable).
-
-### 8.3 Conflicts ✅
-
-Jab multi-source merge me do sources ki value alag hoti hai, wo yahan aati hai.
-
-| Column | Matlab |
-|---|---|
-| Barcode | Device |
-| Field | Kaunsa field |
-| Source A / Value A | Jeetne wala |
-| Source B / Value B | Doosra |
-| Final value | Jo inventory me gaya |
-| Rule | Kaunsa rule laga |
-
-Actions:
-
-- **Refresh** — latest conflicts
-- **Clear** — saare conflict rows hatao (inventory data nahi badalta)
-
-Conflict dekhkar priority rules adjust karo, phir merge dobara chalao.
-
-### 8.4 Priority rules ✅
-
-Batata hai ki merge ke waqt kaunsa source jeetega. Local mode me bhi ab editable hai.
-
-| Field | Matlab |
-|---|---|
-| Field | Kaunsa data field (status, location, etc.) |
-| Source type | QC_STOCK / TRC / INVENTORY / LOCATION |
-| Rank | Chhota number = zyada priority |
-
-Example:
-
-| Field | Source | Rank |
-|---|---|---|
-| status | QC_STOCK | 1 |
-| status | TRC | 2 |
-| status | INVENTORY | 3 |
-
-Matlab: status ke liye QC_STOCK sabse bharosemand.
-
-Local mode me ye rules save hote hain (merge workflow khud Apps Script mode me chalta hai).
-
-### 8.5 Source data ✅
-
-Consolidated source rows ka raw view.
-
-- **Consolidated source rows** — search + table (max 500 rows shown)
-- **Import history** — last 20 runs (source, rows, status)
-
-Ye tab debug ke liye hai: import ke baad data kaisa aaya, ye verify karo.
+**Tips:** Pehle 10–20 rows ki test file se mapping verify karo. Age numeric rakho.
 
 ---
 
-## 9. Labels
+### 6.4 Multisource ✅
+
+**Kaam:** QC + TRC + Inventory + Location ko **barcode pe merge** karna.
 
 **Kaun:** OPERATOR+.
 
-### 9.1 Settings
+**Local mode:**
 
-| Setting | Options |
+1. Har source ke liye ek file choose karo
+2. **Validate files** — stage + auto mapping
+3. **Import all sources**
+4. Result: devices, inserted, updated, conflicts
+5. **Roll back import** available
+
+**Apps Script mode:** sheet names/IDs do → validate → import.
+
+**Conditions:**
+
+| Condition | Result |
 |---|---|
-| How many labels | 1–200 |
-| Label size | 50×25, 38×25, 60×30 mm |
-| Columns | 2, 3, 4 |
-| Barcode height | 20–80 |
-| Fields | Barcode text / Brand + model / Location + bin |
-
-Settings browser me save hoti hain.
-
-### 9.2 Print
-
-1. Settings set karo
-2. **Print**
-3. Print dialog:
-   - Margins: **None**
-   - Scale: **100%**
-   - Background graphics: **ON**
-4. Preview check karo → Print
-
-### 9.3 Common mistakes
-
-- Barcode cut ho raha hai → barcode height kam karo ya label size badlo
-- 3 columns me fit nahi → 2 columns karo
-- Blank labels → inventory me barcode missing hai
+| Same barcode, same field, different value | Conflict record |
+| Conflict winner | Priority rules decide |
+| Barcode missing | Row reject |
+| Merge ke baad | Inventory upsert, movement history banti hai |
 
 ---
 
-## 10. Reports
+### 6.5 Field Mapping
+
+**Kaam:** source column ko system field se jodna.
+
+**Kaun:** ADMIN.
+
+**Steps:**
+
+1. Source choose karo
+2. Har row: source column → target field
+3. Required checkbox
+4. Output order
+5. Active
+6. **Save mapping**
+
+**Common target fields:** `BARCODE`, `MODEL`, `BRAND`, `STATUS`, `STOCK_AGE`, `LOCATION`, `PRIORITY`, `BIN_BUCKET`.
+
+**Conditions:**
+
+| Condition | Result |
+|---|---|
+| `BARCODE` mapped nahi | Import fail |
+| Ek column do targets | Last wala jeetega — avoid karo |
+| Empty target | Column ignore |
+| Mapping save | Agla import naye mapping se chalega |
+
+---
+
+### 6.6 Inventory
+
+**Kaam:** master data dekhna aur edit karna.
+
+**Kaun:** view sab; edit OPERATOR+.
+
+**Toolbar:** Search, Bulk edit, Scan/Scanner ready, filters (Status, Age, Brand, Category, Priority, Bin, Source), Clear, Views, Columns, Export, Add row.
+
+**Saved views:**
+
+1. Filters set karo
+2. **Views → Save current view…**
+3. Naam do → Save
+4. Dobara use: Views → naam
+5. Delete: X
+
+Search/filters/page size **automatic save** hote hain.
+
+**Columns:** hide/show; `BARCODE` lock.
+
+**Row drawer:** saare fields + **History** timeline (Added/Removed/field old→new) + Edit/Delete.
+
+**Add/Edit conditions:**
+
+| Field | Rule |
+|---|---|
+| BARCODE | Required, unique, edit me change nahi |
+| STOCK_AGE | Days (number) |
+| AGE_BUCKET / PRIORITY / STATUS_BUCKET | Rules se auto; blank chhod do |
+| LOCATION / BIN_BUCKET | Rack/shelf |
+
+**Bulk edit:** rows select → status/location/bin/priority → apply. Sirf selected fields badalte hain; audit log entry banti hai.
+
+**Delete:** permanent; history me `Removed` record.
+
+**Desktop scanner:** page pe kahin bhi scan karo → search fill + toast.
+
+---
+
+### 6.7 Rules
+
+**Kaam:** age/status/location se auto buckets aur priority.
+
+**Kaun:** ADMIN.
+
+**Teen tabs:**
+
+| Tab | Fields | Example |
+|---|---|---|
+| **Age buckets** | Min age, Max age, Bucket, Priority | 0–29 → Below 30 → P3 |
+| **Status buckets** | Raw status, Bucket, Marking | `QC Fail` → `QC_FAIL` |
+| **Location rules** | Pattern, Bin bucket, Condition | `SW*` → Shelf A |
+
+**Steps:**
+
+1. Tab kholo
+2. **Add row**
+3. Values bharo
+4. **Save**
+5. **Processing → Run daily process**
+
+**Conditions:**
+
+| Condition | Result |
+|---|---|
+| Rule overlap | Pehla match jeetta hai |
+| Save ke baad | Agle process run pe apply |
+| Match nahi mila | Field khali rehta hai |
+| Priority rule (GAS) | Merge winner decide karta hai |
+
+**Tips:** Age ranges continuous rakho (0–29, 30–59, 60–74, 75+).
+
+---
+
+### 6.8 Reports
+
+**Kaam:** grouped counts aur exports.
 
 **Kaun:** MANAGER+ (VIEWER dekh sakta hai).
 
-### 10.1 Report definitions
+**Group by:** status, brand, age_bucket, status_bucket, location, bin_bucket, model.
 
-Table me saved report definitions.
+**Filters:** status, brand, age bucket, status bucket, location.
 
-Actions:
+**Steps:**
 
-- **New report** — naam + group by + filters
-- **Edit** (pencil)
-- **Delete** (trash)
-- **Generate now** — turant run
+1. Group by choose karo
+2. Filters lagao
+3. **Run**
+4. Export: **CSV**, **Excel**, **PDF**
 
-### 10.2 Generate now
+**Conditions:**
 
-| Field | Matlab |
+| Condition | Result |
 |---|---|
-| Group by | status / brand / age_bucket / status_bucket / location / bin_bucket / model |
-| Filters | status, brand, age bucket, status bucket, location |
-
-Result: groups + counts.
-
-### 10.3 Templates ✅
-
-Reusable report formats (advanced; local mode me bhi supported):
-
-- **New template** — naam + config JSON
-- **Edit / Delete**
-- **Config JSON** structure aapke template engine pe depend karta hai
-
-### 10.4 Exports
-
-| Button | Output |
-|---|---|
-| **CSV** | Grouped counts |
-| **Excel** | XLSX with filters |
-| **PDF** | Print-ready report |
-
-**Export all to sheets** ⚠️ — Apps Script mode me sab reports sheets me likhta hai.
+| Data empty | 0 rows report |
+| Filter galat | Empty result |
+| Export | File download |
+| Export all to sheets ⚠️ | Sirf GAS |
 
 ---
 
-## 11. Scheduled reports
+### 6.9 Report Templates
 
-**Kaun:** MANAGER+ dekh sakta hai, ADMIN bana sakta hai.
+**Kaam:** reusable report formats save karna.
 
-### 11.1 New schedule
+**Kaun:** ADMIN (view MANAGER+).
+
+**Page:** **Reports** page ka focused templates mode.
+
+**Fields:**
 
 | Field | Matlab |
 |---|---|
-| Name | Internal naam |
-| Group by | Report dimension |
-| Frequency | Daily / Weekly / Monthly |
-| Format | PDF / XLSX |
-| Recipients | Comma-separated emails |
-| Status / Brand / Location filter | Optional exact match |
-| Active | ON = automatic send |
-
-### 11.2 Kaise chalta hai
-
-- Server boot pe + har **30 minute** check karta hai
-- Due schedule (last run + period) → report generate → email
-- `last_run_at` save hota hai — restart pe duplicate nahi jaata
-- Email fail ho to schedule active rehta hai, next cycle me retry
-
-### 11.3 Actions
-
-- **Run** — abhi bhejo
-- **Edit** — settings badlo
-- **Delete** — band karo
-
-### 11.4 Common mistakes
-
-- Email nahi ja raha → Settings me SMTP configure karo, **email test** dabao
-- Recipients comma se separate hone chahiye
-- "Never" last run = pehli baar abhi tak due nahi hua
-
----
-
-## 12. Alerts
-
-**Kaun:** ADMIN bana sakta hai; sab dekh sakte hain.
-
-### 12.1 Alert types
-
-| Type | Matlab | Example |
-|---|---|---|
-| **AGE_OVER** | Kitne din se purana stock | 90+ days ka stock |
-| **STATUS_BUCKET_COUNT** | Bucket me count threshold | QC_FAIL > 50 |
-| **MISSING_FIELD** | Field missing | location khali |
-
-### 12.2 New alert
-
-| Field | Note |
-|---|---|
-| Name | Unique |
-| Type | Upar wale 3 |
-| Threshold | Number |
-| Filter field / value | Optional (brand = Apple) |
-| Email to | Recipients |
+| Name | Template ka naam |
+| Config JSON | Group by + filters JSON |
 | Active | ON/OFF |
 
-### 12.3 Testing
+**Steps:**
 
-Card **Notification tests** me:
+1. **New template**
+2. Name + Config JSON
+3. Save
+4. Edit/Delete row actions
 
-- **Send test email**
-- **Send WhatsApp test**
-
-Dono Settings ki config use karte hain. Fail ho to exact error message dikhta hai.
-
-### 12.4 Check now
-
-**Check now** — abhi rules evaluate karo, triggered alerts dikhenge. Daily process ke saath bhi automatic chalta hai.
+**Conditions:** Invalid JSON → save reject. Local mode supported.
 
 ---
 
-## 13. Purchasing
+### 6.10 Report Builder
+
+**Kaam:** naya report definition banana (saved reports list ke saath).
 
 **Kaun:** MANAGER+.
 
-Do tabs: **Purchase orders** aur **Vendors**.
+**Steps:**
 
-### 13.1 Vendors tab
+1. **New report**
+2. Naam
+3. Filter field (`BRAND`) + value (`Apple`)
+4. Report columns (`STATUS,AGE_BUCKET`)
+5. Save
+6. Row pe **Generate** / Edit / Delete
 
-| Field | Note |
-|---|---|
-| Name | Required, unique |
-| Contact person | Text |
-| Email | Text |
-| Phone | Text |
-| Address | Text |
-| Notes | Text |
-| Active | ON/OFF |
-
-Actions: **Edit**, **Delete**. Vendor delete tabhi hoga jab uska koi PO na ho.
-
-### 13.2 Purchase orders tab
-
-Table columns: PO number, vendor, status, lines, ordered, received, expected.
-
-Status flow:
-
-```
-DRAFT → ORDERED → PARTIAL → RECEIVED
-              ↘ CANCELLED
-```
-
-### 13.3 Naya PO
-
-1. **New purchase order**
-2. Vendor choose karo
-3. Status: **Draft** ya **Ordered**
-4. Expected date + notes
-5. **Add line** — har line me:
-   - Barcode (optional)
-   - Model
-   - Brand
-   - Quantity
-   - Unit cost
-6. **Save order**
-
-PO number auto-generate hota hai (`PO-YYYYMMDD-001`).
-
-### 13.4 Receive
-
-1. PO row me **Receive**
-2. Har line ka remaining quantity dikhta hai
-3. **Receive now** me quantity daalo (0 = skip)
-4. **Receive stock**
-
-Result:
-
-- Received quantity update
-- Barcode wali line inventory me `IN_STOCK` ban jaati hai
-- Status auto: sab aa gaya → `RECEIVED`, partial → `PARTIAL`
-- Over-receive reject hota hai
-
-### 13.5 Cancel
-
-- Sirf un orders ke liye jisme kuch receive nahi hua
-- `CANCELLED` ke baad edit nahi
-
-### 13.6 Common mistakes
-
-- "Cannot receive N; only M remain" → quantity remaining se zyada hai
-- Received order edit nahi hota — naya PO banao
-- Vendor delete nahi ho raha → pehle uske POs cancel/delete karo
+**Conditions:** naam duplicate → update ho jaata hai. Empty columns → default.
 
 ---
 
-## 14. Sources
+### 6.11 Alerts
 
-**Kaun:** ADMIN.
+**Kaam:** threshold alerts banana aur test karna.
 
-Source = data ka origin (QC sheet, TRC sheet, inventory sheet, location sheet).
+**Kaun:** ADMIN (view sab).
 
-### 14.1 New source
+**Alert types:**
 
-| Field | Note |
+| Type | Matlab |
 |---|---|
-| Name | Unique |
-| Role | PRIMARY (main data) ya JOIN (extra data) |
-| Type | Free text, e.g. Google Sheet; system QC/TRC/Inventory/Location se source type infer karta hai |
-| Sheet name | Google Sheet tab ka naam |
-| Sheet ID | External spreadsheet ho to |
-| Join key | Default `barcode` |
-| Join fields | Comma-separated fields is source se lene hain |
-| Active | ON/OFF |
+| `AGE_OVER` | Itne din se purana stock |
+| `STATUS_BUCKET_COUNT` | Bucket count threshold |
+| `MISSING_FIELD` | Field missing |
 
-### 14.2 Source types ka matlab
+**Fields:** Name, Filter field, Filter value, Operator, Threshold, Email to, Telegram, Active.
 
-| Type | Use |
-|---|---|
-| QC_STOCK | QC pass/fail data |
-| TRC | Repair/TRC data |
-| INVENTORY | Main inventory sheet |
-| LOCATION | Location/bin mapping |
-| OTHER | Manual/import source |
+**Steps:**
 
-### 14.3 Kab kya karein
-
-- Naya sheet aaya → source add karo → mapping karo
-- Source band karna hai → Edit → Active OFF
-- Delete local mode me nahi (Apps Script me available)
-
----
-
-## 15. Field Mapping
-
-**Kaun:** ADMIN.
-
-Source columns ko standard fields se jodta hai.
-
-### 15.1 Kaise map karein
-
-1. Source choose karo
-2. Har row me:
-   - **Source column** (sheet ka header)
-   - **Target field** (`BARCODE`, `MODEL`, `BRAND`, `STATUS`, `STOCK_AGE`, `LOCATION`, ...)
-   - **Required** checkbox
-   - **Output order**
-   - **Active**
-3. **Save mapping**
-
-### 15.2 Rules
-
-- `BARCODE` required hai
-- Ek source column ek hi target pe
-- Empty target = ignore
-- Mapping save karne ke baad import karo
-
-### 15.3 Common mistakes
-
-- Barcode mapping missing → import fail
-- Age column text me hai → numeric karo
-- Status ka naam galat → rules match nahi karenge
-
----
-
-## 16. Rules
-
-**Kaun:** ADMIN.
-
-Rules ka result: age bucket, status bucket, bin bucket, priority. Changes **next process run** pe apply hote hain.
-
-### 16.1 Age buckets tab
-
-| Field | Matlab |
-|---|---|
-| Min age | Days (inclusive) |
-| Max age | Days (inclusive) |
-| Bucket name | e.g. `Below 30`, `30-60`, `Above 75` |
-| Priority | `P1`, `P2`, `P3` |
-
-Example:
-
-| Min | Max | Bucket | Priority |
-|---|---|---|---|
-| 0 | 29 | Below 30 | P3 |
-| 30 | 59 | 30-60 | P2 |
-| 60 | 74 | 60-75 | P2 |
-| 75 | 9999 | Above 75 | P1 |
-
-Rule overlap na ho — pehla match jeetta hai.
-
-### 16.2 Status buckets tab
-
-| Field | Matlab |
-|---|---|
-| Raw status | Sheet me jo status aata hai (`L4`, `QC Fail`) |
-| Bucket | Standard bucket (`READY`, `QC_FAIL`) |
-| Marking | Optional note/flag |
-
-### 16.3 Location rules tab
-
-| Field | Matlab |
-|---|---|
-| Pattern | Location ka pattern (`SW*`, `A1`) |
-| Bucket | Bin bucket (`Shelf A`, `Cage 1`) |
-| Condition | Optional extra condition |
-
-### 16.4 Priority rules
-
-⚠️ Apps Script mode (Imports → Priority rules tab).
-
-Merge ke waqt field-level winner decide karta hai. Rank chhota = zyada priority.
-
-### 16.5 Apply karna
-
-Rules save karne ke baad:
-
-1. **Dashboard → Run daily process** (ya Imports ke baad process)
-2. Inventory me buckets update ho jaate hain
-
----
-
-## 17. Users & Security
-
-**Kaun:** ADMIN.
-
-Do tabs.
-
-### 17.1 Users tab
-
-| Column | Matlab |
-|---|---|
-| Email | Login |
-| Role | VIEWER → OWNER |
-| Active | YES/NO |
-| Password | Set hai ya nahi |
-| Locked until | Lockout time |
-| Last login | Last successful login |
-
-**New user:**
-
-1. **New user**
-2. Email, role, password (10+ chars, letters + numbers)
+1. **New alert**
+2. Values bharo (`e.g. 50`)
 3. Save
+4. **Check now** — triggered list
+5. Email/WhatsApp test buttons
 
-**Edit user:**
+**Conditions:**
 
-- Role badlo
-- Active OFF = login block + existing sessions revoke
-- Apna role khud change nahi kar sakte
-
-**Reset password:**
-
-- User row → reset
-- Naya password set karo
-- Us user ke saare sessions revoke ho jaate hain
-
-**2FA reset:** agar user ne authenticator kho diya, ADMIN `auth.totpReset` se 2FA off kar sakta hai (Settings ke through).
-
-### 17.2 Sheet security tab ⚠️
-
-Sirf Apps Script mode. Google Sheet ke tabs lock/unlock karta hai taaki accidental edit na ho.
-
-- **Lock** — sheet protect
-- **Unlock** — protection hatao
-
-Local mode me ye tab data nahi dikhayega.
+| Condition | Result |
+|---|---|
+| SMTP missing | Test fail with clear message |
+| Threshold cross | Alert triggered + `last_fired_at` update |
+| Active OFF | Skip |
 
 ---
 
-## 18. Sessions & Audit
+### 6.12 Ageing Trends
 
-**Kaun:** ADMIN.
+**Kaam:** daily ageing trend aur current buckets.
 
-### 18.1 Active sessions
+**Kaun:** sab.
 
-| Column | Matlab |
-|---|---|
-| User | Email |
-| Role | Current role |
-| Signed in | Session start |
-| Last seen | Last activity |
-| Expires | Session expiry |
+**Page pe:** line chart (date + buckets) + current age bucket table.
 
-Actions:
-
-- **Sign out** — sirf ye session revoke
-- **All** — us user ke saare devices se sign out
-
-Revoke hone ke baad us token se koi API call nahi chalegi.
-
-### 18.2 Login history
-
-Last 100 events:
-
-| Event | Matlab |
-|---|---|
-| Login OK | Successful login |
-| Login Failed | Wrong password |
-| Login Locked | 5 failures ke baad lock |
-| Login Blocked Locked | Locked account se try |
-| Logout | Manual logout |
-
-IP column se suspicious logins pakdo.
-
-### 18.3 Kab dekhna chahiye
-
-- Roz shaam ko failed logins
-- Kisi user ke multiple devices
-- Employee exit ke baad uske sessions revoke karo
+**Conditions:** Daily process nahi chala → "No trend data yet". Inventory empty → table empty.
 
 ---
 
-## 19. Settings
+### 6.13 Labels
 
-**Kaun:** ADMIN (VIEWER ke liye read-only).
-
-### 19.1 System settings
-
-Groups:
-
-| Group | Keys |
-|---|---|
-| Telegram | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` |
-| Auto backup | `AUTO_BACKUP`, `BACKUP_FOLDER_ID` |
-| SMTP | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `ALERT_EMAIL_TO` |
-| WhatsApp | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID`, `ALERT_WHATSAPP_TO` |
-| Google | `GOOGLE_CLIENT_ID`, `GOOGLE_AUTO_CREATE` |
-| LLM | `LLM_API_URL`, `LLM_API_KEY`, `LLM_MODEL` |
-
-Save karo → test buttons se verify.
-
-### 19.2 Notification tests
-
-- **Send test email** — SMTP check
-- **Send WhatsApp test** — Cloud API check
-
-### 19.3 Connection
-
-- API URL (desktop/mobile ke liye)
-- Sheet URL (Apps Script)
-- Save
-
-### 19.4 Two-factor authentication
-
-1. **Enable 2FA**
-2. Secret key ya `otpauth://` URI authenticator app me daalo
-   - Google Authenticator → "+" → Enter setup key
-3. App ka 6-digit code daalo
-4. **Verify and enable**
-5. **8 recovery codes** copy karke safe rakho
-6. Disable: password + current code
-
-Recovery code ek hi baar chalta hai.
-
-### 19.5 Backup
-
-- Boot pe + har 6 ghante
-- `server/data/backups/`
-- Latest 7 rakhe jaate hain
-
----
-
-## 20. AI Assistant
+**Kaam:** barcode labels print karna.
 
 **Kaun:** OPERATOR+.
 
-Natural language command likho:
+**Settings:** count (1–200), size (50×25 / 38×25 / 60×30 mm), columns (2/3/4), barcode height, fields (barcode text, brand+model, location+bin).
+
+**Steps:**
+
+1. Settings set karo
+2. **Print**
+3. Print dialog: margins **None**, scale **100%**, background ON
+
+**Conditions:** Barcode missing → blank label. Cut ho raha hai → height kam / size bada.
+
+---
+
+### 6.14 Schedules
+
+**Kaam:** recurring PDF/XLSX reports email karna.
+
+**Kaun:** MANAGER+ view; ADMIN create.
+
+**Fields:** Name, Group by, Frequency (Daily/Weekly/Monthly), Format (PDF/XLSX), Recipients, filters, Active.
+
+**Steps:**
+
+1. **New schedule**
+2. Values bharo
+3. Save
+4. **Run** — turant send
+5. Edit/Delete
+
+**Conditions:**
+
+| Condition | Result |
+|---|---|
+| SMTP missing | Run fail (clear error) |
+| Due schedule | Server har 30 min check karta hai |
+| Restart | `last_run_at` se duplicate nahi |
+| Multiple recipients | Comma-separated |
+
+---
+
+### 6.15 Exports
+
+**Kaam:** grouped reports ya poora inventory download karna.
+
+**Kaun:** sab.
+
+**Page pe:** group-by select + **CSV / Excel / PDF** buttons + **Inventory CSV**.
+
+**Conditions:** Empty group → empty file. Backend auth fail → error toast.
+
+---
+
+### 6.16 Purchasing
+
+**Kaun:** MANAGER+.
+
+**Vendors tab:** name, contact, email, phone, address, notes, active. Delete tabhi jab PO na ho.
+
+**Purchase orders tab:** PO number, vendor, status, lines, ordered, received, expected.
+
+**Steps (PO):**
+
+1. **New purchase order**
+2. Vendor + status (Draft/Ordered) + expected date + notes
+3. Lines: barcode (optional), model, brand, qty, unit cost
+4. Save → PO number auto `PO-YYYYMMDD-001`
+5. **Receive** → quantities → **Receive stock**
+
+**Conditions:**
+
+| Condition | Result |
+|---|---|
+| Over-receive | Reject with remaining qty |
+| Barcode wali line | Inventory me `IN_STOCK` |
+| Sab receive | Status `RECEIVED` |
+| Partial | `PARTIAL` |
+| Received order edit/cancel | Block |
+| Vendor delete with PO | Block |
+
+---
+
+### 6.17 Users & Roles
+
+**Kaun:** ADMIN.
+
+**Table:** email, role, active, password set?, locked until, last login.
+
+**New user:** email + role + password (10+ letters/numbers).
+
+**Edit:** role change; active OFF → login block + sessions revoke; apna role change nahi.
+
+**Reset password:** naya password; us user ke sab sessions revoke.
+
+**Conditions:**
+
+| Condition | Result |
+|---|---|
+| Weak password | Reject |
+| Email duplicate | Update existing |
+| Active OFF | Login block |
+| Locked account | 15 min wait / admin unlock |
+
+---
+
+### 6.18 Security
+
+**Kaam:** 2FA status, password policy, active sessions.
+
+**Kaun:** ADMIN.
+
+**Page pe:**
+
+| Card | Kya |
+|---|---|
+| Two-factor authentication | Enabled/off + recovery codes left + Settings link |
+| Password policy | 10+ chars, letters+numbers, lockout rule |
+| Active sessions | user, role, signed in, last seen, **Sign out** |
+
+**Conditions:** 2FA reset admin se; session revoke → token dead.
+
+---
+
+### 6.19 Sessions & Audit
+
+**Kaun:** ADMIN.
+
+**Active sessions:** per-session sign out, per-user **All**.
+
+**Login history:** last 100 events (OK / FAILED / LOCKED / BLOCKED / LOGOUT) + IP.
+
+**Kab dekhna:** roz shaam, employee exit, suspicious logins.
+
+---
+
+### 6.20 Activity Log
+
+**Kaam:** har action ka audit trail.
+
+**Kaun:** MANAGER+.
+
+**Page:** activity table (time, actor, action, entity, details).
+
+**Conditions:** Actions: login, inventory changes, imports, PO, settings, user changes.
+
+---
+
+### 6.21 Processing
+
+**Kaam:** daily rules pipeline trigger karna.
+
+**Kaun:** OPERATOR+.
+
+**Steps:** **Run daily process** → confirm → rules apply + trend snapshot + alerts check.
+
+**Conditions:** Data empty → process chalega par counts 0. Error → toast.
+
+---
+
+### 6.22 Processing History
+
+**Kaam:** import/process jobs ka record.
+
+**Kaun:** MANAGER+.
+
+**Page:** runs table (file, kind, status, rows, created).
+
+**Conditions:** Status: COMPLETE / PARTIAL_FAILURE / UPLOADED / DISCARDED.
+
+---
+
+### 6.23 Data Quality
+
+**Kaam:** missing fields / errors ka overview.
+
+**Kaun:** MANAGER+.
+
+**Page:** quality summary + errors by source.
+
+**Conditions:** Score missing fields ke ratio se. Naya import → refresh.
+
+---
+
+### 6.24 System Health
+
+**Kaam:** backend status + self-test.
+
+**Kaun:** ADMIN.
+
+**Page:** health JSON + checks table:
+
+| Check | Kya |
+|---|---|
+| Database connection | SQLite online |
+| User accounts | count |
+| Inventory table | count |
+| Email configuration | SMTP host set? |
+| Automatic backups | every 6h, 7 kept |
+
+**Conditions:** FAIL check → detail me reason.
+
+---
+
+### 6.25 Email Settings
+
+**Kaam:** SMTP configure karna (alerts + scheduled reports).
+
+**Kaun:** ADMIN.
+
+**Fields:** SMTP host, port, user, password, from, alert recipients.
+
+**Steps:**
+
+1. Values bharo (`smtp.gmail.com`, `587`, app password)
+2. **Save**
+3. **Send test**
+
+**Conditions:**
+
+| Condition | Result |
+|---|---|
+| Host/user galat | Test fail with error |
+| Gmail | App password chahiye |
+| Save | Turant apply |
+
+---
+
+### 6.26 Settings
+
+**Kaun:** ADMIN.
+
+**Sections:**
+
+| Section | Keys |
+|---|---|
+| System settings | Telegram, backup, SMTP, WhatsApp, Google, LLM |
+| Notification tests | Email / WhatsApp |
+| Connection | API URL, Sheet URL |
+| Two-factor authentication | Enable/disable + recovery codes |
+| Barcode scanner | Mode, min length, terminator, test, serial connect |
+| Change password | Current + new (10+ letters/numbers) |
+
+**Conditions:** Secret fields masked; save ke baad test karo.
+
+---
+
+### 6.27 AI Command Center
+
+**Kaun:** OPERATOR+.
+
+**Commands (English/Hindi):**
 
 - `List Apple devices older than 75 days`
 - `How many devices are in Bin Storage?`
 - `Show today's inventory summary`
-- Hindi bhi: `75 din se purane Apple devices dikhao`
 
-Kaise kaam karta hai:
+**Kaise chalta hai:** command → filters parse → inventory query → result.
 
-1. Command parse hoti hai (filters: brand, location, status, age)
-2. Inventory query chalti hai
-3. Result JSON me dikhta hai
+**Conditions:**
 
-**LLM mode (optional):** Settings me `LLM_API_URL` + `LLM_API_KEY` + `LLM_MODEL` set karo. Model sirf filters suggest karta hai; SQL khud server banata hai. LLM fail ho to rules parser chal jaata hai.
+| Condition | Result |
+|---|---|
+| LLM configured | Smarter parsing |
+| LLM fail | Rules parser fallback |
+| Kuch samajh nahi aaya | `success: false` message |
 
 ---
 
-## 21. Roz ka workflow
+### 6.28 Help
+
+**Kaun:** sab.
+
+**Page pe:** getting started, barcode scanners, backups, troubleshooting, documentation link.
+
+---
+
+## 7. Hardware barcode scanners (desktop)
+
+Desktop (Windows/macOS) pe camera scan nahi — **hardware scanner** support hai.
+
+### 7.1 USB HID scanner (99% scanners)
+
+- Scanner **keyboard ki tarah** kaam karta hai — **driver install nahi karna**
+- App fast keystrokes detect karta hai (average ≤45ms per character)
+- Enter/Tab terminator pe search fill hota hai
+- Inventory page pe **kahin bhi** scan karo
+- Toolbar me **Scanner ready** badge dikhta hai
+
+### 7.2 Serial / COM scanner
+
+1. Scanner ko serial mode me set karo (vendor manual)
+2. **Settings → Barcode scanner → Connect serial scanner**
+3. Port select karo (default 9600 baud)
+4. Scan karke test karo
+
+### 7.3 Scanner settings
+
+| Setting | Matlab | Default |
+|---|---|---|
+| Mode | Hardware / Camera | Hardware |
+| Minimum code length | Chhoti typing ignore | 6 |
+| Terminator | Enter / Tab / None | Enter |
+| Test scanner | Live test field | — |
+
+### 7.4 Conditions
+
+| Condition | Result |
+|---|---|
+| Normal typing | Ignore (speed check) |
+| Modal/drawer open | Scan ignore |
+| Code < min length | Ignore |
+| Scanner sends no terminator | Detect nahi hoga — Terminator setting badlo |
+| Mobile app | Camera scan available |
+
+---
+
+## 8. Daily / weekly workflow
 
 ### Subah
 
-1. Dashboard — errors, ageing, counts
-2. Sessions & Audit — failed logins (admin)
+1. **Dashboard** — errors, ageing, counts
+2. **Sessions & Audit** — failed logins (admin)
 
 ### Naya stock
 
-1. Imports → Universal import → file
-2. Validate → Import now
-3. Errors check karo
-4. Labels print karo
+1. **Import Data** → file → Validate → Import
+2. Errors check karo
+3. **Labels** print
+4. **Processing → Run daily process** (buckets refresh)
 
-### Movement
+### Device movement
 
-1. Inventory → search barcode
+1. **Inventory** → scan/search
 2. Row → Edit → location/status
-3. History me change confirm karo
+3. History me change confirm
 
-### Bulk
+### Bulk update
 
-1. Rows select → Bulk edit
-2. Status/location/priority apply
+1. Rows select → **Bulk edit**
+2. Fields choose → apply
 
-### Orders
+### Order
 
-1. Purchasing → New PO
-2. Receive hone pe **Receive**
-3. Inventory auto update
+1. **Purchasing** → New PO → Save
+2. Receive hone pe **Receive** → inventory update
 
-### Shaam
+### Shaam / weekly
 
-1. Reports → PDF/XLSX
-2. Scheduled report agar weekly chahiye
+1. **Reports** → PDF/XLSX
+2. **Schedules** me weekly report
+3. **Data Quality** + **Processing History** review
+4. **Sessions & Audit** check
+5. Backup verify
 
 ---
 
-## 22. Backup aur restore
+## 9. Backup, restore aur rollback
 
-### Backup
+### 9.1 Automatic backup
 
-- Automatic: boot + har 6 ghante
-- Location: `server/data/backups/`
-- Retention: 7
+- Server boot pe + har **6 ghante**
+- Latest **7** copies
+- Location: DB folder ke andar `data/backups/`
 
-### Manual backup
+### 9.2 Manual backup
 
-- Settings → Auto backup ON
-- Ya server band karke `data/bulkrepair.db` copy karo
+- Desktop: `data` folder copy karo
+- Server: `server/data/bulkrepair.db` copy karo
 
-### Restore
+### 9.3 Restore
 
-1. Server band karo
-2. `data/bulkrepair.db` rename karo
+1. Server/app band karo
+2. `bulkrepair.db` rename karo
 3. Backup file ko `bulkrepair.db` naam se copy karo
-4. Server start karo
+4. Start karo
 
-### Import rollback
+### 9.4 Import rollback
 
-- Committed import ka **Roll back import**
+- Sirf **committed** job ka
+- Naye barcodes delete, purane restore
+- Dobara rollback nahi
 - Dry run ka rollback nahi
 
 ---
 
-## 23. Troubleshooting
+## 10. Condition cookbook — "agar aisa ho to kya hoga"
+
+| Condition | Result |
+|---|---|
+| Duplicate barcode import | Existing row update |
+| Barcode missing | Row reject |
+| Age text me | Rule match nahi, bucket khali |
+| 50k+ rows | Upload reject |
+| Import ke baad galti | Rollback (ek baar) |
+| Rollback dobara | `already rolled back` |
+| Vendor ke paas PO | Delete block |
+| PO se zyada receive | Reject + remaining |
+| Received PO cancel | Block |
+| SMTP missing | Email test/schedule fail |
+| WhatsApp token missing | Test fail |
+| Camera permission denied | Scanner error (mobile) |
+| 2FA phone kho gaya | Recovery code / admin reset |
+| Password bhool gaya | Admin reset |
+| User inactive | Login + sessions block |
+| Role change | Agli request se naya role |
+| Backend band | Error panel |
+| Port busy (desktop) | Agla free port (5051…) |
+| DB delete | Backup se restore |
+| Multi-source local | File-based merge |
+| Sheet security local | Hidden (GAS only) |
+
+---
+
+## 11. Troubleshooting
 
 | Problem | Solution |
 |---|---|
-| Page nahi khul raha | `http://localhost:5050/api/health` check karo |
-| API error | Setup → Connection me URL; desktop pe `http://localhost:5050` |
-| Android connect nahi | Wi-Fi same? `adb reverse tcp:5050 tcp:5050` |
-| Login fail | Caps Lock, password 10+ chars, admin reset |
-| Account locked | 15 min wait; admin lock clear kar sakta hai |
-| 2FA code galat | Phone time auto karo; recovery code use karo |
-| 2FA reset chahiye | Admin se `TOTP reset` karwao |
-| Email nahi ja raha | SMTP host/from/pass; test email |
-| WhatsApp nahi ja raha | Token, phone ID, country code |
-| Import fail | Barcode column, 50k limit, errors preview |
-| Rollback nahi dikh raha | Sirf committed job; dry run nahi |
-| Charts khali | Inventory empty / daily process nahi chala |
-| Camera nahi chal raha | Permission; HTTPS/localhost |
-| Print bigad raha | Margins None, scale 100%, background ON |
-| Sessions tab khali | Koi active session nahi ya admin nahi ho |
-| Multi-source error | Har source ke liye file select karo; barcode column hona chahiye |
-| Priority rules error | Field khali na ho; source type QC_STOCK/TRC/INVENTORY/LOCATION/OTHER me se ho |
-| Sheet security error | Apps Script only |
-| Report templates error | Ab local me supported hai — Config JSON valid hona chahiye |
+| Page nahi khul raha | `http://localhost:5050/api/health` check |
+| API error | Setup/Connection me URL; desktop pe default |
+| Android connect nahi | Wi-Fi same, `adb reverse tcp:5050 tcp:5050` |
+| Login fail | Caps Lock, 10+ policy, admin reset |
+| Account locked | 15 min wait |
+| 2FA code galat | Phone time auto; recovery code |
+| 2FA reset | Admin reset |
+| Email nahi ja raha | SMTP host/from/pass → test |
+| WhatsApp nahi | Token, phone ID, country code |
+| Import fail | Barcode column, size, errors preview |
+| Rollback nahi dikh raha | Committed job hi rollback hota hai |
+| Charts khali | Inventory empty / process nahi chala |
+| Scanner kaam nahi | Terminator setting, min length, focus |
+| Serial scanner nahi | Port/baud check, desktop app use karo |
+| Print bigad raha | Margins None, scale 100% |
+| Nav double highlight | 1.0.1 update karo (fix included) |
+| Windows SmartScreen | More info → Run anyway |
+| macOS "unverified" | Right-click → Open |
 
 ---
 
-## 24. Security checklist
+## 12. Security checklist
 
-- [ ] Owner password strong (10+ chars, letters + numbers)
-- [ ] 2FA enable karo
-- [ ] Extra users deactivate karo
-- [ ] Har hafte Sessions & Audit check karo
-- [ ] Backups safe location pe
-- [ ] Public internet pe expose kar rahe ho to HTTPS reverse proxy
-- [ ] SMTP password/LLM key rotate karte raho
-- [ ] Employee exit pe uske sessions revoke karo
+- [ ] Owner password strong (10+, letters+numbers)
+- [ ] 2FA enable
+- [ ] Extra users deactivate
+- [ ] Har hafte sessions/audit check
+- [ ] Backups safe location
+- [ ] Public internet ho to HTTPS reverse proxy
+- [ ] SMTP/LLM keys rotate
+- [ ] Employee exit pe sessions revoke
 
 ---
 
-## 25. Useful commands
+## 13. Useful commands
 
 ```bash
-# server start
+# server dev
 cd server && npm run dev
 
-# build only
+# build
 cd server && npm run build
 
 # tests
@@ -1074,7 +1047,7 @@ cd server && npm test
 # panel rebuild
 cd server && npm run build:panel
 
-# admin user (CLI)
+# admin user
 cd server && npm run create-user -- owner@example.com 'StrongPass123' ADMIN
 
 # Docker
@@ -1082,45 +1055,66 @@ docker compose up --build
 
 # Android APK
 cd mobile/android && ./gradlew assembleDebug
+
+# Desktop packages
+cd desktop && npm run dist:mac
+cd desktop && npm run dist:win:x64
+cd desktop && npm run dist:win:arm64
 ```
 
 ---
 
-## 26. FAQ aur glossary
+## 14. FAQ aur glossary
 
 ### FAQ
 
-**Data kahan save hota hai?**
-Local: `server/data/bulkrepair.db`. Apps Script: Google Sheet.
+**Data kahan?** Local: `bulkrepair.db`. GAS: Google Sheet.
 
-**Internet chahiye?**
-Local mode me nahi. Apps Script me haan.
+**Internet?** Local me nahi; GAS me haan.
 
-**Multi-warehouse?**
-Abhi single global inventory. Multi-warehouse implement nahi hua.
+**Multi-warehouse?** Abhi single global inventory.
 
-**Hindi/Gujarati UI?**
-Sidebar bottom me selector. Default English.
+**Hindi/Gujarati?** Sidebar bottom selector; default English.
 
-**Data delete ho gaya?**
-Backup restore ya import rollback.
+**Data delete?** Backup restore / import rollback.
 
-**Ek user kitne devices se login kar sakta hai?**
-Koi limit nahi; Sessions page se revoke kar sakte ho.
+**Kitne devices?** Unlimited; sessions page se revoke.
+
+**Scanner driver?** USB HID ko nahi chahiye; serial ke liye OS driver.
 
 ### Glossary
 
 | Term | Matlab |
 |---|---|
-| **Barcode** | Device ka unique ID |
-| **Bucket** | Standard category (age/status/location) |
-| **Priority** | P1/P2/P3 — urgency |
-| **Source** | Data ka origin (sheet/file) |
-| **Mapping** | Source column → system field |
-| **Staging** | Import ka temporary area (commit se pehle) |
-| **Job** | Ek import run ka record |
-| **Conflict** | Do sources me same field ki alag value |
-| **Rollback** | Committed import undo |
-| **Bin bucket** | Physical bin/shelf group |
-| **Session** | Login token |
-| **2FA** | Password ke upar authenticator code |
+| Barcode | Device ka unique ID |
+| Bucket | Category (age/status/location) |
+| Priority | P1/P2/P3 urgency |
+| Source | Data ka origin |
+| Mapping | Column → field |
+| Staging | Import ka temporary area |
+| Job | Ek import/process run |
+| Conflict | Do sources ki alag value |
+| Rollback | Committed import undo |
+| Bin bucket | Shelf/cage group |
+| Session | Login token |
+| 2FA | Authenticator code |
+
+---
+
+## 15. 1.0.1 me kya naya hai
+
+| Area | Change |
+|---|---|
+| Sidebar | Legacy ke saare **28 tabs** |
+| Naye pages | Ageing Trends, Processing, Exports, Email Settings, Security, System Health, Help |
+| Focused pages | Report Templates, Report Builder, Multisource, Activity Log, Processing History, Data Quality |
+| Nav fix | Parent/child route double highlight fix |
+| Build | Har platform ke liye panel copy guaranteed |
+| Scanners | Hardware HID + serial support (desktop) |
+| UI | Full light theme, #0078FF, 4px gutters, 6px cards, thin typography |
+| Forms | Har field me example/placeholder |
+| Docs | Ye guide + PDF |
+
+---
+
+**End of guide.** Koi cheez samajh nahi aayi ho ya screen match na kare to app ka screenshot bhejo — main us hisse ko update kar dunga.

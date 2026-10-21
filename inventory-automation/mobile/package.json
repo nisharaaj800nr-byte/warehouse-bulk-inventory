@@ -1,6 +1,6 @@
 {
   "name": "bulk-repair-mobile",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Bulk Repair mobile shell (Capacitor)",
   "scripts": {

@@ -1,7 +1,7 @@
 {
   "name": "bulk-repair-desktop",
   "productName": "Bulk Repair",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Bulk Repair inventory app (desktop shell)",
   "main": "main.cjs",
@@ -9,7 +9,10 @@
     "panel": "node scripts/copy-panel.mjs",
     "start": "npm run prepare:server && npm run panel && electron .",
     "dist": "npm run prepare:server && npm run panel && electron-builder --win portable --x64",
-    "prepare:server": "node scripts/prepare-server.mjs"
+    "prepare:server": "node scripts/prepare-server.mjs",
+    "dist:mac": "npm run prepare:server && npm run panel && electron-builder --mac zip --arm64",
+    "dist:win:x64": "npm run prepare:server && npm run panel && electron-builder --win portable --x64",
+    "dist:win:arm64": "npm run prepare:server && npm run panel && electron-builder --win portable --arm64"
   },
   "devDependencies": {
     "electron": "^35.1.4",

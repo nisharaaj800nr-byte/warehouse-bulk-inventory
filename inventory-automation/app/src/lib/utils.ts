@@ -1,5 +1,5 @@
 /* Small shared utilities: class names, roles, formatting, downloads, theme. */
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Role } from './api';
 
 export type ClassValue = string | false | null | undefined;
@@ -80,18 +80,12 @@ export function initTheme(): void {
 }
 
 export function useTheme(): { theme: Theme; toggle: () => void } {
-  const [theme, setThemeState] = useState<Theme>(
-    () => (localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light'),
-  );
-  const toggle = useCallback(() => {
-    setThemeState((prev) => {
-      const next: Theme = prev === 'dark' ? 'light' : 'dark';
-      localStorage.setItem(THEME_KEY, next);
-      document.documentElement.classList.toggle('dark', next === 'dark');
-      return next;
-    });
+  // The product is light-only by design.
+  useEffect(() => {
+    localStorage.removeItem(THEME_KEY);
+    document.documentElement.classList.remove('dark');
   }, []);
-  return { theme, toggle };
+  return { theme: 'light', toggle: () => undefined };
 }
 
 /* ---------------- data helpers ---------------- */

@@ -6,13 +6,11 @@ import {
   KeyRound,
   LogOut,
   Menu,
-  Moon,
   PanelLeftClose,
   PanelLeftOpen,
-  Sun,
 } from 'lucide-react';
 import { NAV_GROUPS } from './nav';
-import { cx, hasRole, initials, useTheme } from '../lib/utils';
+import { cx, hasRole, initials } from '../lib/utils';
 import { ChangePasswordDialog, useAuth } from '../features/auth';
 import { Button } from '../ui/base';
 import { DropdownMenu } from '../ui/overlay';
@@ -21,7 +19,6 @@ import { translate, useLang, type Lang } from '../lib/i18n';
 
 export function Shell() {
   const { session, logout } = useAuth();
-  const { theme, toggle } = useTheme();
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('ors.sidebar') === 'collapsed');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pwOpen, setPwOpen] = useState(false);
@@ -136,14 +133,6 @@ export function Shell() {
             <Menu size={18} />
           </Button>
           <div className="tb-title grow">{title}</div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggle}
-            aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-          >
-            {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
-          </Button>
           <DropdownMenu
             className="userchip"
             content={

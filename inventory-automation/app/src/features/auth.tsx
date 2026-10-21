@@ -10,7 +10,7 @@ import {
   useState,
 } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowRight, BarChart3, Cloud, Eye, EyeOff, KeyRound, LockKeyhole, Mail, Moon, ShieldCheck, Sun } from 'lucide-react';
+import { ArrowRight, BarChart3, Cloud, Eye, EyeOff, KeyRound, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
 import {
   api,
   ApiError,
@@ -27,7 +27,6 @@ import {
 import { errorMessage, queryClient } from '../lib/query';
 import { Button, Field, Input, Spinner } from '../ui/base';
 import { Modal, useToast } from '../ui/overlay';
-import { useTheme } from '../lib/utils';
 import { GoogleSignIn } from './google-signin';
 
 interface SessionState {
@@ -134,7 +133,6 @@ export function LoginPage() {
   const { status, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { theme, toggle } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(true);
@@ -250,17 +248,6 @@ export function LoginPage() {
       </aside>
 
       <div className="login-panel">
-        <div className="login-theme">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggle}
-            aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-          >
-            {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
-          </Button>
-        </div>
-
         <div className="login-card">
           <div className="login-eyebrow">Welcome back</div>
           <h1 className="login-title2">Sign in to your account</h1>

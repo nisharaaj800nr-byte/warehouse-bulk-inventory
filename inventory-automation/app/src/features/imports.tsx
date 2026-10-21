@@ -1164,8 +1164,8 @@ function SourceDataTab() {
 
 /* ================= Page ================= */
 
-export function ImportsPage() {
-  const [tab, setTab] = useState('universal');
+export function ImportsPage({ initialTab = 'universal' }: { initialTab?: string }) {
+  const [tab, setTab] = useState(initialTab);
   const isLocal = getApiMode() !== 'gas';
 
   return (

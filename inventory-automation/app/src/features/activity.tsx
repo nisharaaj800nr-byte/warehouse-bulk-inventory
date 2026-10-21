@@ -60,8 +60,16 @@ function SheetView({
   );
 }
 
-export function ActivityPage() {
-  const [tab, setTab] = useState('activity');
+export function ActivityPage({
+  initialTab = 'activity',
+  lockedTab = false,
+  heading
+}: {
+  initialTab?: 'activity' | 'runs' | 'errors' | 'quality';
+  lockedTab?: boolean;
+  heading?: string;
+}) {
+  const [tab, setTab] = useState(initialTab);
   const activity = useQuery({ queryKey: ['activity'], queryFn: () => api.activityList() });
   const runs = useQuery({ queryKey: ['history'], queryFn: () => api.historyList() });
   const errors = useQuery({ queryKey: ['procErrors'], queryFn: () => api.errorsList() });
@@ -80,7 +88,7 @@ export function ActivityPage() {
   return (
     <div className="stack">
       <PageHeader
-        title="Activity & Audit"
+        title={heading ?? 'Activity & Audit'}
         subtitle="Processing history, error log, activity feed and data-quality metrics."
         actions={
           <Button icon={<RefreshCw size={14} />} loading={activity.isFetching || runs.isFetching} onClick={refresh}>
@@ -88,16 +96,18 @@ export function ActivityPage() {
           </Button>
         }
       />
-      <Tabs
-        tabs={[
-          { key: 'activity', label: 'Activity log' },
-          { key: 'runs', label: 'Processing history' },
-          { key: 'errors', label: 'Processing errors' },
-          { key: 'quality', label: 'Data quality' },
-        ]}
-        active={tab}
-        onChange={setTab}
-      />
+      {!lockedTab && (
+        <Tabs
+          tabs={[
+            { key: 'activity', label: 'Activity log' },
+            { key: 'runs', label: 'Processing history' },
+            { key: 'errors', label: 'Processing errors' },
+            { key: 'quality', label: 'Data quality' },
+          ]}
+          active={tab}
+          onChange={(key) => setTab(key as typeof tab)}
+        />
+      )}
 
       {tab === 'activity' && (
         <Card title="Recent activity" actions={<span className="hint">Latest events, newest first</span>} noBody>

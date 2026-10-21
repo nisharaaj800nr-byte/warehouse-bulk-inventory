@@ -42,7 +42,7 @@ function rowToForm(r: Record<string, unknown>): ReportForm {
   };
 }
 
-export function ReportsPage() {
+export function ReportsPage({ mode = 'full' }: { mode?: 'full' | 'templates' | 'builder' }) {
   const toast = useToast();
   const qc = useQueryClient();
   const { session } = useAuth();
@@ -302,7 +302,7 @@ export function ReportsPage() {
   return (
     <div className="stack">
       <PageHeader
-        title={translate('Reports')}
+        title={mode === 'templates' ? 'Report Templates' : mode === 'builder' ? 'Report Builder' : translate('Reports')}
         subtitle="Report definitions and generation. Generated reports appear as sheets in the spreadsheet."
         actions={
           <>
@@ -335,6 +335,7 @@ export function ReportsPage() {
 
       {reports.isError && <ErrorPanel message={errorMessage(reports.error)} onRetry={() => void reports.refetch()} />}
 
+      {mode !== 'templates' && (
       <Card title="Report definitions" noBody>
         <DataTable
           columns={columns}
@@ -344,7 +345,9 @@ export function ReportsPage() {
           empty={<EmptyState title="No reports yet" hint="Create your first report definition." />}
         />
       </Card>
+      )}
 
+      {mode !== 'builder' && (
       <Card title="Report templates" actions={<span className="hint">Reusable formats (advanced)</span>} noBody>
         <DataTable
           columns={tplCols}
@@ -354,6 +357,7 @@ export function ReportsPage() {
           empty={<EmptyState title="No templates" />}
         />
       </Card>
+      )}
 
       {/* Add / edit report */}
       <Modal

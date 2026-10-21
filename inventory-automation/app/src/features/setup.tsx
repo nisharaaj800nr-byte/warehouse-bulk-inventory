@@ -207,7 +207,7 @@ export function SetupPage() {
                 {backend === 'local' && (
                   <Field
                     label="Server URL (optional)"
-                    hint="Default: http://localhost:5050. Phone pe LAN IP ya VPS URL daalo, e.g. http://192.168.1.10:5050"
+                    hint="Default: http://localhost:5050. On a phone use your LAN IP or VPS URL, e.g. http://192.168.1.10:5050"
                   >
                     <Input
                       value={localUrl}

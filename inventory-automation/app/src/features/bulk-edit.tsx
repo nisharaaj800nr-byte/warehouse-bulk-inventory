@@ -31,11 +31,11 @@ export function BulkEditButton({ onDone }: { onDone?: () => void }) {
 
   async function apply(): Promise<void> {
     if (codes.length === 0) {
-      toast.error('Kam se kam ek barcode daalo.');
+      toast.error('Enter at least one barcode.');
       return;
     }
     if (!value.trim()) {
-      toast.error('Naya value daalo.');
+      toast.error('Enter a new value.');
       return;
     }
 

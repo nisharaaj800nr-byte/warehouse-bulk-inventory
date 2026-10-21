@@ -246,20 +246,17 @@ export function ErrorPanel({ message, onRetry }: { message: string; onRetry?: ()
 }
 
 export function PageHeader({
-  title,
   subtitle,
   actions,
 }: {
+  /** Kept for call-site compatibility; the shell topbar renders the page title. */
   title: string;
   subtitle?: string;
   actions?: ReactNode;
 }) {
   return (
     <div className="page-head">
-      <div>
-        <h1 className="page-title">{translate(title)}</h1>
-        {subtitle && <div className="page-sub">{translate(subtitle)}</div>}
-      </div>
+      {subtitle ? <div className="page-sub">{translate(subtitle)}</div> : <span />}
       {actions && <div className="page-actions">{actions}</div>}
     </div>
   );

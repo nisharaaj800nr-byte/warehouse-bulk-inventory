@@ -82,17 +82,24 @@ docker compose up --build
 - App: `http://localhost:5000`
 - Data `/data` volume me
 
-### 3.5 Desktop app
+### 3.5 Desktop app (self-contained)
 
 `dist-builds/` me:
 
 - macOS: `BulkRepair-1.0.0-macos-arm64.zip`
 - Windows x64: `BulkRepair-1.0.0-windows-x64-portable.exe`
 
-Desktop sirf UI hai. Backend alag chalana hoga, phir **Setup → Connection** me URL:
+Desktop app **apna server khud start karta hai** — alag se `npm start` ki zarurat nahi.
 
-- Same machine: `http://localhost:5050`
-- Dusre system se: `http://<server-ip>:5050`
+- App launch → embedded server port **5050** pe (busy ho to 5051, 5052…)
+- Database:
+  - macOS: `~/Library/Application Support/Bulk Repair/data/bulkrepair.db`
+  - Windows: `%APPDATA%\Bulk Repair\data\bulkrepair.db`
+- Backups: usi folder ke `data/backups/`
+- Server logs: `logs/server.log` (same app data folder)
+
+Agar external backend (VPS/LAN) use karna ho to Setup me **Server URL** do —
+wahi URL embedded server ke bajaye use hoga.
 
 ### 3.6 Android APK
 

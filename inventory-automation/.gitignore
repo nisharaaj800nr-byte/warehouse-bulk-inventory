@@ -1,2 +1,4 @@
-dist-builds/
 .DS_Store
+dist-builds/
+desktop/server-runtime/
+desktop/release/

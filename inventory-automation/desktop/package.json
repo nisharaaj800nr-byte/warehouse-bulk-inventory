@@ -7,8 +7,9 @@
   "main": "main.cjs",
   "scripts": {
     "panel": "node scripts/copy-panel.mjs",
-    "start": "npm run panel && electron .",
-    "dist": "npm run panel && electron-builder --win portable"
+    "start": "npm run prepare:server && npm run panel && electron .",
+    "dist": "npm run prepare:server && npm run panel && electron-builder --win portable --x64",
+    "prepare:server": "node scripts/prepare-server.mjs"
   },
   "devDependencies": {
     "electron": "^35.1.4",
@@ -32,7 +33,13 @@
     },
     "portable": {
       "artifactName": "BulkRepair-${version}-portable.exe"
-    }
+    },
+    "extraResources": [
+      {
+        "from": "server-runtime",
+        "to": "server-runtime"
+      }
+    ]
   },
   "dependencies": {
     "electron-updater": "^6.8.9"

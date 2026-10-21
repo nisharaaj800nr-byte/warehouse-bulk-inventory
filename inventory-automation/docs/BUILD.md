@@ -29,11 +29,12 @@ Output: `mobile/android/app/build/outputs/apk/debug/app-debug.apk`
 - Debug build (self-signed). For Play Store use `./gradlew assembleRelease` with
   a keystore.
 
-## 3. macOS desktop
+## 3. macOS desktop (self-contained)
 
 ```bash
 cd desktop
 npm install
+npm run prepare:server        # server dist + production node_modules + panel
 npm run panel
 npx electron-builder --mac zip --arm64
 ```
@@ -41,14 +42,23 @@ npx electron-builder --mac zip --arm64
 Output: `desktop/release/Bulk Repair-1.0.0-arm64-mac.zip` and
 `desktop/release/mac-arm64/Bulk Repair.app`.
 
-## 4. Windows desktop
+The app starts its own embedded server on launch. The database lives in
+`~/Library/Application Support/Bulk Repair/data/bulkrepair.db`.
+
+## 4. Windows desktop (self-contained)
 
 ```bash
 cd desktop
+npm install
+npm run prepare:server
+npm run panel
 npx electron-builder --win portable --x64
 ```
 
 Output: `desktop/release/BulkRepair-1.0.0-portable.exe` (x64, unsigned).
+
+On Windows the database lives in `%APPDATA%\Bulk Repair\data\bulkrepair.db`.
+No separate server install is needed; the app spawns it automatically.
 
 ## Artifacts copied for testing
 
@@ -57,13 +67,13 @@ Output: `desktop/release/BulkRepair-1.0.0-portable.exe` (x64, unsigned).
 | File | Platform |
 |---|---|
 | `BulkRepair-1.0.0-android-debug.apk` | Android (debug) |
-| `BulkRepair-1.0.0-macos-arm64.zip` | macOS Apple Silicon |
-| `BulkRepair-1.0.0-windows-x64-portable.exe` | Windows x64 |
-| `BulkRepair-1.0.0-windows-arm64-portable.exe` | Windows on ARM |
+| `BulkRepair-1.0.0-macos-arm64.zip` | macOS Apple Silicon (self-contained) |
+| `BulkRepair-1.0.0-windows-x64-portable.exe` | Windows x64 (self-contained) |
+| `BulkRepair-1.0.0-windows-arm64-portable.exe` | Windows on ARM (self-contained) |
 
-The desktop and mobile shells only ship the UI. Start the backend separately
-(`cd server && npm run dev`, default `http://localhost:5000`) and point the app
-at it from the Setup/Connection screen.
+The desktop shells ship the UI **and** the server. The mobile APK still needs a
+backend — start one with `cd server && npm run dev` (or use the desktop app's
+embedded server on your LAN) and point the APK at it from Setup.
 
 ## Notes
 

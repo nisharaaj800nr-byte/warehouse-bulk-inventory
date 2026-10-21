@@ -50,6 +50,12 @@ export const clearApiUrl = (): void => safeRemove(URL_KEY);
 
 export const getApiUrl = (): string => {
   const stored = safeGet(URL_KEY);
+  const injected =
+    typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('api') ?? '' : '';
+  // A user-configured external backend always wins. The bundled desktop server
+  // injects its actual port, which must override a stale localhost URL.
+  if (stored && !/^https?:\/\/(localhost|127\.0\.0\.1)(:|\/)/i.test(stored)) return stored;
+  if (injected) return injected;
   if (stored) return stored;
   const envUrl = import.meta.env.VITE_API_URL;
   if (envUrl) return envUrl;

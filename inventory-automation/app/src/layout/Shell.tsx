@@ -63,7 +63,7 @@ export function Shell() {
       )}
       <aside className={cx('sidebar', collapsed && 'collapsed', mobileOpen && 'mobile-open')}>
         <div className="side-brand">
-          <div className="side-logo">BR</div>
+          <img src="brand-mark.png" className="side-mark" alt="Bulk Repair" />
           <div className="side-text">
             <div className="side-name">Bulk Repair</div>
             <div className="side-sub">Inventory Portal</div>

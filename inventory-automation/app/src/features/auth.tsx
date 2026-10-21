@@ -10,7 +10,7 @@ import {
   useState,
 } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { KeyRound, Lock, Moon, Sparkles, ShieldCheck, Sun } from 'lucide-react';
+import { ArrowRight, BarChart3, Cloud, Eye, EyeOff, KeyRound, LockKeyhole, Mail, Moon, ShieldCheck, Sun } from 'lucide-react';
 import {
   api,
   ApiError,
@@ -144,6 +144,7 @@ export function LoginPage() {
   const [needsTotp, setNeedsTotp] = useState(false);
   const [totpCode, setTotpCode] = useState('');
   const [showConn, setShowConn] = useState(false);
+  const [showPw, setShowPw] = useState(false);
   const [url, setUrl] = useState(getApiUrl());
 
   if (status === 'loading') return <SplashInline />;
@@ -198,26 +199,56 @@ export function LoginPage() {
 
   return (
     <div className="login">
-      <div className="login-brand">
+      <aside className="login-brand">
         <div className="login-brand-inner">
-          <div className="login-logo">BR</div>
-          <div className="login-big">Bulk Repair — Inventory Portal</div>
+          <div className="login-logo-card">
+            <img src="brand-mark.png" alt="Bulk Repair" />
+          </div>
+          <h1>
+            Bulk Repair
+            <br />
+            <span>Inventory Portal</span>
+          </h1>
           <p className="login-tagline">
-            Run the daily pipeline, browse inventory, and keep every record audit-ready — one place, from anywhere.
+            Manage your repair inventory, track stock and keep your records organised — all in one place.
           </p>
           <ul className="login-features">
             <li>
-              <ShieldCheck size={16} /> Secure sign-in with role-based access
+              <span className="login-feature-ic">
+                <ShieldCheck size={18} />
+              </span>
+              <div>
+                <strong>Secure access</strong>
+                <span>Role-based login with advanced security.</span>
+              </div>
             </li>
             <li>
-              <Sparkles size={16} /> Live dashboard, ageing trends and reports
+              <span className="login-feature-ic">
+                <BarChart3 size={18} />
+              </span>
+              <div>
+                <strong>Real-time inventory</strong>
+                <span>Track stock, orders and updates instantly.</span>
+              </div>
             </li>
             <li>
-              <Lock size={16} /> Data stays inside your Google account
+              <span className="login-feature-ic">
+                <Cloud size={18} />
+              </span>
+              <div>
+                <strong>Data always with you</strong>
+                <span>Access your data anytime, anywhere.</span>
+              </div>
             </li>
           </ul>
+          <div className="login-script">
+            Smarter Inventory.
+            <br />
+            Smoother Repairs.
+          </div>
         </div>
-      </div>
+      </aside>
+
       <div className="login-panel">
         <div className="login-theme">
           <Button
@@ -229,31 +260,51 @@ export function LoginPage() {
             {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
           </Button>
         </div>
+
         <div className="login-card">
-          <div className="login-title2">Sign in</div>
-          <div className="login-sub">Use the email and password set up by your administrator.</div>
+          <div className="login-eyebrow">Welcome back</div>
+          <h1 className="login-title2">Sign in to your account</h1>
+          <p className="login-sub">Access your inventory, manage repairs and stay on top of your work.</p>
+
           {error && <div className="login-err">{error}</div>}
+
           <form onSubmit={submit}>
-            <Field label="Email">
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                autoComplete="username"
-                required
-              />
+            <Field label="Email Address">
+              <div className="input-icon">
+                <Mail size={16} />
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@company.com"
+                  autoComplete="username"
+                  required
+                />
+              </div>
             </Field>
+
             <Field label="Password">
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                autoComplete="current-password"
-                required
-              />
+              <div className="input-icon">
+                <LockKeyhole size={16} />
+                <Input
+                  type={showPw ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  autoComplete="current-password"
+                  required
+                />
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label={showPw ? 'Hide password' : 'Show password'}
+                  onClick={() => setShowPw((value) => !value)}
+                >
+                  {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </Field>
+
             {needsTotp && (
               <Field label="Authenticator code" hint="6-digit code, or one of your recovery codes.">
                 <Input
@@ -266,43 +317,60 @@ export function LoginPage() {
                 />
               </Field>
             )}
-            <div className="spread" style={{ marginBottom: 16 }}>
+
+            <div className="login-row">
               <label className="checkbox">
                 <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /> Keep me
                 signed in
               </label>
+              <button
+                type="button"
+                className="login-link"
+                onClick={() =>
+                  setError('To reset your password, ask an administrator to use Users & Security → Reset password.')
+                }
+              >
+                Forgot password?
+              </button>
             </div>
+
             <Button variant="primary" size="lg" type="submit" loading={busy} style={{ width: '100%' }}>
-              {busy ? 'Signing in…' : 'Sign in'}
+              {busy ? 'Signing in…' : 'Sign in'} {!busy && <ArrowRight size={16} />}
             </Button>
           </form>
-        <GoogleSignIn onError={setError} />
+
+          <div className="login-divider">or</div>
+
+          <GoogleSignIn onError={setError} />
+
           <div className="login-alt">
             <button type="button" onClick={startDemo} disabled={demoBusy}>
               {demoBusy ? 'Loading demo…' : 'Explore demo (sample data)'}
             </button>
-          </div>
-          {getApiMode() === 'http' && (
-            <div className="login-alt" style={{ marginTop: 10 }}>
+            {getApiMode() === 'http' && (
               <button type="button" onClick={() => setShowConn((s) => !s)}>
                 Connection settings
               </button>
-              {showConn && (
-                <div style={{ marginTop: 10, textAlign: 'left' }}>
-                  <Field label="Apps Script /exec URL" hint="Deploy â†’ Web app URL (ends with /exec)">
-                    <Input
-                      value={url}
-                      onChange={(e) => setUrl(e.target.value)}
-                      placeholder="https://script.google.com/macros/s/…/exec"
-                    />
-                  </Field>
-                  <Button onClick={saveUrl} disabled={!url.trim().startsWith('http')}>
-                    Save URL
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
+            )}
+            {showConn && (
+              <div style={{ marginTop: 4, textAlign: 'left', width: '100%' }}>
+                <Field label="Server URL" hint="Local server, LAN or VPS endpoint (ends with /api/gas).">
+                  <Input
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    placeholder="http://localhost:5050/api/gas"
+                  />
+                </Field>
+                <Button onClick={saveUrl} disabled={!url.trim().startsWith('http')}>
+                  Save URL
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <div className="login-foot">
+            <LockKeyhole size={13} /> Your data is secure and encrypted
+          </div>
         </div>
       </div>
     </div>

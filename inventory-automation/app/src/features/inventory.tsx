@@ -6,6 +6,7 @@ import { Bookmark, Boxes, Download, Pencil, Plus, RefreshCw, ScanLine, Search, S
 import { api, callApi } from '../lib/api';
 import { errorMessage, queryClient } from '../lib/query';
 import { downloadBase64, downloadText, fmtDateTime, hasRole, useDebounced } from '../lib/utils';
+import { isDesktopShell, useHardwareScanner } from '../lib/scanner';
 import {
   Badge,
   Button,
@@ -340,6 +341,14 @@ export function InventoryPage() {
   const activeFilter = !!q || Object.values(filters).some(Boolean);
   const barcodeKey = headers.includes('BARCODE') ? 'BARCODE' : headers[0] ?? '';
 
+  const desktop = isDesktopShell();
+
+  useHardwareScanner((code) => {
+    setQ(code);
+    setPage(1);
+    toast.ok(`Scanned ${code}`);
+  });
+
   const history = useQuery({
     queryKey: ['inventoryHistory', selected && barcodeKey ? selected[barcodeKey] : ''],
     queryFn: () => api.inventoryHistory(String(selected?.[barcodeKey] ?? '')),
@@ -407,14 +416,21 @@ export function InventoryPage() {
               />
             </div>
             <BulkEditButton onDone={() => void list.refetch()} />
-            <Button
-              size="sm"
-              icon={<ScanLine size={14} />}
-              onClick={() => setScanOpen(true)}
-              title="Scan barcode with camera"
-            >
-              Scan
-            </Button>
+            {!desktop && (
+              <Button
+                size="sm"
+                icon={<ScanLine size={14} />}
+                onClick={() => setScanOpen(true)}
+                title="Scan barcode with camera"
+              >
+                Scan
+              </Button>
+            )}
+            {desktop && (
+              <span className="badge badge-ok" title="USB barcode scanner ready — scan anywhere on this page">
+                <ScanLine size={12} /> Scanner ready
+              </span>
+            )}
             {filterSelects}
             {activeFilter && (
               <Button

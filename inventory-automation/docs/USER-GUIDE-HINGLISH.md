@@ -297,6 +297,20 @@ Sirf selected fields badalte hain; baaki data same rehta hai. Action audit log m
 - Empty filter result → **Clear** dabao
 - Purana data dikh raha hai → **Refresh**
 
+### 7.10 Hardware barcode scanners (desktop)
+
+Desktop (Windows/macOS) pe camera scan nahi, **USB hardware scanner** support hai.
+
+- Zyada tar USB scanners **keyboard ki tarah** kaam karte hain — koi driver install nahi karna padta.
+- Inventory page pe kahin bhi scan karo — search box khud bhar jaata hai.
+- **Settings → Barcode scanner** me:
+  - Mode: Hardware / Camera (desktop pe hardware)
+  - Minimum code length (chhoti typing ignore hoti hai)
+  - Terminator: Enter / Tab / None
+  - **Test scanner** field me scan karke verify karo
+- **Serial/COM scanners:** Settings → **Connect serial scanner** (desktop app me Web Serial support hai, 9600 baud default).
+- Mobile app me camera scan available rehta hai.
+
 ---
 
 ## 8. Imports

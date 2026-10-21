@@ -1,11 +1,20 @@
 import { translate } from '../lib/i18n';
 /* Settings: system settings (Telegram, backup), ops tests, selftest, connection. */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Archive, CheckCircle2, Mail, RefreshCw, Save, Send, Wrench, XCircle } from 'lucide-react';
+import { Archive, CheckCircle2, Mail, RefreshCw, Save, ScanLine, Send, Usb, Wrench, XCircle } from 'lucide-react';
 import { api, getApiMode, getApiUrl, getSheetUrl, setApiUrl, setDemoMode, setSheetUrl } from '../lib/api';
 import { errorMessage } from '../lib/query';
 import { hasRole } from '../lib/utils';
+import {
+  connectSerialScanner,
+  disconnectSerialScanner,
+  getScannerSettings,
+  hasSerialSupport,
+  isDesktopShell,
+  saveScannerSettings,
+  type ScannerSettings
+} from '../lib/scanner';
 import { Badge, Button, Card, Field, Input, PageHeader, Switch } from '../ui/base';
 import { Modal, useToast } from '../ui/overlay';
 import { useAuth } from './auth';
@@ -122,6 +131,8 @@ export function SettingsPage() {
           </>
         }
       />
+
+      <ScannerCard />
 
       <Card title="System settings" actions={!canAdmin ? <span className="hint">Admin only — read-only for your role</span> : undefined}>
         <div className="form-grid">
@@ -459,6 +470,138 @@ function TwoFactorCard() {
           </Field>
         </div>
       </Modal>
+    </Card>
+  );
+}
+
+
+/* ---------------- barcode scanner ---------------- */
+
+function ScannerCard() {
+  const toast = useToast();
+  const desktop = isDesktopShell();
+  const [settings, setSettings] = useState<ScannerSettings>(() => getScannerSettings());
+  const [test, setTest] = useState('');
+  const [last, setLast] = useState('');
+  const [connected, setConnected] = useState(false);
+  const stopRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    saveScannerSettings(settings);
+  }, [settings]);
+
+  useEffect(() => () => stopRef.current?.(), []);
+
+  const connect = async () => {
+    try {
+      const stop = await connectSerialScanner();
+      stopRef.current = stop;
+      setConnected(true);
+      toast.ok('Serial scanner connected. Scan a barcode to test.');
+    } catch (error) {
+      toast.error(errorMessage(error));
+    }
+  };
+
+  const disconnect = () => {
+    stopRef.current?.();
+    stopRef.current = null;
+    disconnectSerialScanner();
+    setConnected(false);
+  };
+
+  return (
+    <Card
+      title={
+        <span className="row" style={{ gap: 8 }}>
+          <ScanLine size={16} /> Barcode scanner
+        </span>
+      }
+      actions={
+        <Badge tone={settings.mode === 'hardware' ? 'ok' : 'neutral'}>
+          {settings.mode === 'hardware' ? 'Hardware ready' : 'Camera mode'}
+        </Badge>
+      }
+    >
+      <p className="hint" style={{ marginTop: 0 }}>
+        USB barcode scanners work as keyboards — no driver is required on Windows or macOS. Scan anywhere on the
+        Inventory page and the search fills automatically. Serial scanners can be connected below.
+      </p>
+
+      <div className="form-grid">
+        <Field label="Scanner mode" hint={desktop ? 'Desktop builds use hardware scanners.' : 'Hardware or camera.'}>
+          <select
+            className="input"
+            value={settings.mode}
+            onChange={(event) => setSettings((prev) => ({ ...prev, mode: event.target.value as ScannerSettings['mode'] }))}
+          >
+            <option value="hardware">Hardware scanner (USB / serial)</option>
+            {!desktop && <option value="camera">Camera</option>}
+          </select>
+        </Field>
+
+        <Field label="Minimum code length" hint="Shorter bursts are ignored as normal typing.">
+          <Input
+            type="number"
+            min={3}
+            max={64}
+            value={settings.minLength}
+            onChange={(event) =>
+              setSettings((prev) => ({ ...prev, minLength: Math.min(64, Math.max(3, Number(event.target.value) || 6)) }))
+            }
+          />
+        </Field>
+
+        <Field label="Terminator" hint="Most scanners send Enter after the code.">
+          <select
+            className="input"
+            value={settings.terminator}
+            onChange={(event) =>
+              setSettings((prev) => ({ ...prev, terminator: event.target.value as ScannerSettings['terminator'] }))
+            }
+          >
+            <option value="enter">Enter</option>
+            <option value="tab">Tab</option>
+            <option value="none">None</option>
+          </select>
+        </Field>
+
+        <Field label="Test scanner" hint="Click here, then scan a barcode.">
+          <Input
+            value={test}
+            onChange={(event) => setTest(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                const value = test.trim();
+                if (value) setLast(value);
+                setTest('');
+              }
+            }}
+            placeholder="Scan into this field"
+          />
+        </Field>
+      </div>
+
+      <div className="row" style={{ gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
+        {last && (
+          <Badge tone="ok">
+            Last scan: <span className="mono">{last}</span>
+          </Badge>
+        )}
+        {hasSerialSupport() ? (
+          connected ? (
+            <Button variant="secondary" icon={<Usb size={14} />} onClick={disconnect}>
+              Disconnect serial scanner
+            </Button>
+          ) : (
+            <Button variant="secondary" icon={<Usb size={14} />} onClick={() => void connect()}>
+              Connect serial scanner
+            </Button>
+          )
+        ) : (
+          <span className="hint">Serial scanners need the desktop app (Chromium).</span>
+        )}
+      </div>
     </Card>
   );
 }

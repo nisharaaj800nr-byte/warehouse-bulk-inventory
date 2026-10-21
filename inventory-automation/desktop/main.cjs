@@ -159,6 +159,18 @@ function createWindow(port) {
   const query = port ? { api: `http://127.0.0.1:${port}/api/gas` } : undefined;
   win.loadFile(PANEL, query ? { query } : undefined);
 
+  try {
+    const session = win.webContents.session;
+    session.setPermissionCheckHandler((_wc, permission) => permission === 'serial');
+    session.setPermissionRequestHandler((_wc, permission, callback) => callback(permission === 'serial'));
+    session.on('select-serial-port', (event, ports, _webContents, callback) => {
+      event.preventDefault();
+      callback(ports && ports[0] ? ports[0].portId : '');
+    });
+  } catch {
+    /* older Electron builds without serial support */
+  }
+
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('http://') || url.startsWith('https://')) shell.openExternal(url);
     return { action: 'deny' };

@@ -1,5 +1,5 @@
 /* ============================================================
-   Bulk Repair — design system
+   Bulk Repair â€” design system
    A calm, dense operations console: deep navy navigation,
    cool slate canvas, electric blue accent, soft elevation.
    Light/dark via `html.dark`. Class vocabulary is consumed by
@@ -8,10 +8,10 @@
 
 :root {
   /* canvas + surfaces */
-  --bg: #eef2f7;
+  --bg: #e6eded;
   --surface: #ffffff;
-  --surface-2: #f7f9fc;
-  --surface-3: #eef2f7;
+  --surface-2: #ffffff;
+  --surface-3: #e6eded;
 
   /* text */
   --ink: #0b1220;
@@ -19,8 +19,8 @@
   --muted-2: #8a97a8;
 
   /* lines */
-  --line: #e3e8ef;
-  --line-strong: #cfd8e3;
+  --line: #111212;
+  --line-strong: #111212;
 
   /* accent */
   --brand: #0078ff;
@@ -33,7 +33,7 @@
   --warn: #b45309;
   --danger: #dc2626;
   --info: #0284c7;
-  --chip: #eef2f8;
+  --chip: #e6eded;
   --brand-soft: rgba(37, 99, 235, 0.10);
   --ok-soft: rgba(5, 150, 105, 0.10);
   --warn-soft: rgba(180, 83, 9, 0.10);

@@ -19,5 +19,10 @@ fs.copyFileSync(path.join(server, 'package.json'), path.join(out, 'package.json'
 fs.copyFileSync(path.join(server, 'package-lock.json'), path.join(out, 'package-lock.json'));
 fs.cpSync(path.join(server, 'public'), path.join(out, 'public'), { recursive: true });
 
-execFileSync('npm', ['ci', '--omit=dev', '--no-audit', '--no-fund'], { cwd: out, stdio: 'inherit' });
+const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+execFileSync(npmCmd, ['ci', '--omit=dev', '--no-audit', '--no-fund'], {
+  cwd: out,
+  stdio: 'inherit',
+  shell: process.platform === 'win32'
+});
 console.log('server runtime ready:', out);

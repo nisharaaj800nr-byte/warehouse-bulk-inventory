@@ -1,4 +1,4 @@
-import { translate } from '../lib/i18n';
+import { translate, useLang } from '../lib/i18n';
 /* Settings: system settings (Telegram, backup), ops tests, selftest, connection. */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -23,7 +23,7 @@ const KNOWN_FIELDS: { key: string; label: string; type: 'text' | 'password' | 's
   { key: 'TELEGRAM_BOT_TOKEN', label: 'Telegram bot token', type: 'password', hint: 'From @BotFather' },
   { key: 'TELEGRAM_CHAT_ID', label: 'Telegram chat ID', type: 'text', hint: 'Where alerts are sent' },
   { key: 'AUTO_BACKUP', label: 'Auto backup (with daily process)', type: 'switch' },
-  { key: 'BACKUP_FOLDER_ID', label: 'Backup folder ID (Drive)', type: 'text', hint: 'Optional — Drive folder for backups' },
+  { key: 'BACKUP_FOLDER_ID', label: 'Backup folder ID (Drive)', type: 'text', hint: 'Optional â€” Drive folder for backups' },
   { key: 'SMTP_HOST', label: 'SMTP host', type: 'text', hint: 'e.g. smtp.gmail.com' },
   { key: 'SMTP_PORT', label: 'SMTP port', type: 'text', hint: '587 for TLS' },
   { key: 'SMTP_USER', label: 'SMTP user', type: 'text' },
@@ -32,7 +32,7 @@ const KNOWN_FIELDS: { key: string; label: string; type: 'text' | 'password' | 's
   { key: 'ALERT_EMAIL_TO', label: 'Alert email recipients', type: 'text', hint: 'Comma separated' },
   { key: 'WHATSAPP_TOKEN', label: 'WhatsApp Cloud API token', type: 'password' },
   { key: 'WHATSAPP_PHONE_ID', label: 'WhatsApp phone number id', type: 'text' },
-  { key: 'ALERT_WHATSAPP_TO', label: 'Alert WhatsApp number', type: 'text', hint: 'With country code, e.g. 9198…' },
+  { key: 'ALERT_WHATSAPP_TO', label: 'Alert WhatsApp number', type: 'text', hint: 'With country code, e.g. 9198â€¦' },
   { key: 'GOOGLE_CLIENT_ID', label: 'Google OAuth client ID', type: 'text', hint: 'For Sign in with Google' },
   { key: 'GOOGLE_AUTO_CREATE', label: 'Auto-create Google users (VIEWER)', type: 'switch' },
   { key: 'LLM_API_URL', label: 'LLM API URL', type: 'text', hint: 'OpenAI-compatible chat completions endpoint' },
@@ -74,8 +74,8 @@ export function SettingsPage() {
   const tgTest = useMutation({
     mutationFn: () => api.telegramTest(),
     onSuccess: (res) => {
-      if (res.ok) toast.ok('Telegram test message sent — check the chat.');
-      else toast.error('Telegram send failed — verify bot token and chat ID.');
+      if (res.ok) toast.ok('Telegram test message sent â€” check the chat.');
+      else toast.error('Telegram send failed â€” verify bot token and chat ID.');
     },
     onError: (e) => toast.error(errorMessage(e)),
   });
@@ -89,7 +89,7 @@ export function SettingsPage() {
   const backup = useMutation({
     mutationFn: () => api.backupRun(),
     onSuccess: (res) => {
-      if (res['skipped']) toast.info('Auto backup is OFF — enable AUTO_BACKUP first.');
+      if (res['skipped']) toast.info('Auto backup is OFF â€” enable AUTO_BACKUP first.');
       else if (res['error']) toast.error(String(res['error']));
       else toast.ok(`Backup created: ${String(res['name'] ?? res['backupId'] ?? '')}`);
     },
@@ -100,7 +100,7 @@ export function SettingsPage() {
     mutationFn: () => api.selftest(),
     onSuccess: (res) => {
       if (res.ok) toast.ok('Self-test passed.');
-      else toast.warn('Self-test finished with failures — see details below.');
+      else toast.warn('Self-test finished with failures â€” see details below.');
     },
     onError: (e) => toast.error(errorMessage(e)),
   });
@@ -108,6 +108,7 @@ export function SettingsPage() {
   const mode = getApiMode();
   const [url, setUrl] = useState(getApiUrl());
   const [sheet, setSheet] = useState(getSheetUrl());
+  const [lang, changeLang] = useLang();
 
   return (
     <div className="stack">
@@ -132,9 +133,31 @@ export function SettingsPage() {
         }
       />
 
+      <Card title="Language">
+        <div className="row" style={{ gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <Field label="Interface language">
+            <select
+              className="select"
+              value={lang}
+              onChange={(event) => {
+                changeLang(event.target.value as 'en' | 'hi' | 'gu');
+                window.setTimeout(() => window.location.reload(), 60);
+              }}
+              style={{ minWidth: 180 }}
+            >
+              <option value="en">English</option>
+              <option value="hi">हिन्दी</option>
+              <option value="gu">ગુજરાતી</option>
+            </select>
+          </Field>
+          <span className="hint" style={{ marginBottom: 6 }}>
+            Navigation aur page titles translate hote hain; data aur table columns English me rehte hain.
+          </span>
+        </div>
+      </Card>
       <ScannerCard />
 
-      <Card title="System settings" actions={!canAdmin ? <span className="hint">Admin only — read-only for your role</span> : undefined}>
+      <Card title="System settings" actions={!canAdmin ? <span className="hint">Admin only â€” read-only for your role</span> : undefined}>
         <div className="form-grid">
           {KNOWN_FIELDS.map((f) => (
             <Field key={f.key} label={f.label} hint={f.hint}>
@@ -218,7 +241,7 @@ export function SettingsPage() {
             </div>            {mode === 'http' && (
               <div className="row" style={{ gap: 8, alignItems: 'flex-end' }}>
                 <Field label="Backend /exec URL">
-                  <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://script.google.com/macros/s/…/exec" />
+                  <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://script.google.com/macros/s/â€¦/exec" />
                 </Field>
                 <Button onClick={() => setApiUrl(url)} disabled={!url.trim().startsWith('http')}>
                   Save URL
@@ -227,9 +250,9 @@ export function SettingsPage() {
             )}
             <span className="hint">
               {mode === 'gas'
-                ? 'Served directly by Apps Script — no URL needed.'
+                ? 'Served directly by Apps Script â€” no URL needed.'
                 : mode === 'demo'
-                  ? 'Sample data only — no backend calls.'
+                  ? 'Sample data only â€” no backend calls.'
                   : 'Paste the deployed web-app URL ending with /exec.'}
             </span>
           </div>
@@ -415,7 +438,7 @@ function TwoFactorCard() {
         }
       >
         <p className="hint" style={{ marginTop: 0 }}>
-          Each code works once if you lose your authenticator. Store them somewhere safe — they are shown only now.
+          Each code works once if you lose your authenticator. Store them somewhere safe â€” they are shown only now.
         </p>
         <div
           className="mono"
@@ -527,7 +550,7 @@ function ScannerCard() {
       }
     >
       <p className="hint" style={{ marginTop: 0 }}>
-        USB barcode scanners work as keyboards — no driver is required on Windows or macOS. Scan anywhere on the
+        USB barcode scanners work as keyboards â€” no driver is required on Windows or macOS. Scan anywhere on the
         Inventory page and the search fills automatically. Serial scanners can be connected below.
       </p>
 

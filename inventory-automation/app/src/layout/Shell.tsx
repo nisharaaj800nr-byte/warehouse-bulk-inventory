@@ -15,7 +15,7 @@ import { ChangePasswordDialog, useAuth } from '../features/auth';
 import { Button } from '../ui/base';
 import { DropdownMenu } from '../ui/overlay';
 import { isDemoMode } from '../lib/api';
-import { translate, useLang, type Lang } from '../lib/i18n';
+import { translate, useLang } from '../lib/i18n';
 
 export function Shell() {
   const { session, logout } = useAuth();
@@ -23,7 +23,7 @@ export function Shell() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pwOpen, setPwOpen] = useState(false);
   const location = useLocation();
-  const [lang, changeLang] = useLang();
+  const [lang] = useLang();
 
   const title = useMemo(() => {
     for (const g of NAV_GROUPS) {
@@ -88,22 +88,6 @@ export function Shell() {
           ))}
         </nav>
         <div className="side-foot">
-          <label className="side-lang">
-            <span>Language</span>
-            <select
-              aria-label="Language"
-              className="side-select"
-              value={lang}
-              onChange={(event) => {
-                changeLang(event.target.value as Lang);
-                window.setTimeout(() => window.location.reload(), 50);
-              }}
-            >
-              <option value="en">English</option>
-              <option value="hi">हिन्दी</option>
-              <option value="gu">ગુજરાતી</option>
-            </select>
-          </label>
           <Button
             variant="ghost"
             size="sm"
@@ -119,7 +103,7 @@ export function Shell() {
       <div className="main">
         {isDemoMode() && (
           <div className="banner">
-            <FlaskConical size={14} /> Demo mode — sample data only. Sign out to exit.
+            <FlaskConical size={14} /> Demo mode &mdash; sample data only. Sign out to exit.
           </div>
         )}
         <header className="topbar">
